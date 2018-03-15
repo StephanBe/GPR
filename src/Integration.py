@@ -7,13 +7,13 @@ Created on Wed Feb 21 22:05:28 2018
 http://www.michaelkeutel.de/blog/rotation-matrices-vector-basis/
 """
 
+#from mpl_toolkits.mplot3d import Axes3D
+#from matplotlib.patches import FancyArrowPatch
+#from mpl_toolkits.mplot3d import proj3d
+#from math import cos
+#from math import sqrt
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.patches import FancyArrowPatch
 import numpy as np
-from mpl_toolkits.mplot3d import proj3d
-from math import cos
-from math import sqrt
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
 from scipy import integrate

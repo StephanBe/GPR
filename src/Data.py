@@ -13,6 +13,13 @@ from matplotlib import pyplot
 from math import cos
 import platform
 
+
+if platform.system() == 'Windows':
+    vufo_data = 'data\\Erprobung\\Fahrsicherheitstraining\\Ausweichen Touran'
+else:
+    vufo_data = '../data/Erprobung/Fahrsicherheitstraining/Ausweichen Touran'
+
+"""liest VUFO-CSV-Daten ein"""
 def read(filename):
     Y = []
     X = []
@@ -27,7 +34,7 @@ def read(filename):
     Y = numpy.asarray(Y)
     return [X, Y]
 
-
+"""transformiert Höhen- und Breitengrad in Meter"""
 def latlonToMeter(latlon):
     #Mittlere Höhe und Breite für Krümmung
     l = numpy.mean(latlon[:,0])
@@ -46,30 +53,24 @@ def latlonToMeter(latlon):
         norm.append([(x[0]-latlon[0,0])*m_per_deg_lat,
                      (x[1]-latlon[0,1])*m_per_deg_lon])
     return numpy.asarray(norm)
-        
+
+"""zieht Mittelwert der Daten ab"""   
 def normalizeAcc(Yacc):
     y = [[Y[0]-numpy.mean(Yacc[:,0]),
           Y[1]-numpy.mean(Yacc[:,1]),
           Y[2]-numpy.mean(Yacc[:,2])]
           for Y in Yacc]
     return  numpy.asarray(y)
-  
+
+"""springe in das gegebene Verzeichnis"""
 prevdir=os.getcwd()
-
-if platform.system() == 'Windows':
-    os.chdir('data\\Erprobung\\Fahrsicherheitstraining\\Ausweichen Touran')
-else:
-    os.chdir('../data/Erprobung/Fahrsicherheitstraining/Ausweichen Touran')
-
+os.chdir(vufo_data)
 """Beschleunigung einlesen"""
 Xacc, Yacc = read('AccelData.txt')
-
 """GPS-Daten einlesen"""
 Xgps, Ygps = read('GPSData.txt')
-
 """Gyro-Daten einlesen"""
 Xgyr, Ygyr = read('GyroData.txt')
-
 os.chdir(prevdir)
 
 """Korrigiere Zeitstempelfehler"""
