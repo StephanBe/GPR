@@ -9,9 +9,9 @@ http://www.michaelkeutel.de/blog/rotation-matrices-vector-basis/
 
 #from mpl_toolkits.mplot3d import Axes3D
 #from matplotlib.patches import FancyArrowPatch
-#from mpl_toolkits.mplot3d import proj3d
 #from math import cos
 #from math import sqrt
+from mpl_toolkits.mplot3d import proj3d #wird benutzt! Warnung ignorieren
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
