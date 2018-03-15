@@ -102,3 +102,5 @@ ENV/
 
 # daten sind zu sensibel für github
 data/
+Liste_der_Dopplungen.txt
+googlemaps*.html
