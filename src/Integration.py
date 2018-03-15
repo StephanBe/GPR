@@ -62,40 +62,17 @@ def accToPos(Xacc, Yacc, vx_0=0, vy_0=0):
     forward = np.array([1,0])
     for i in range(len(Xacc)-1):
         dt = Xacc[i+1]-Xacc[i]
-        lefthand = np.array([-forward[1], forward[0]])
+        lefthand = np.array([-forward[1], forward[0]]) #y-Richtung auf Basis der x-Richtung
         a = rotate(Yacc[i,1:], lefthand)
         aNext = rotate(Yacc[i+1,1:], lefthand)
         x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
         y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
+        #vx[i+1] = vx[i] + dt*a[0]
+        #vy[i+1] = vy[i] + dt*a[1]
         vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
         vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
         forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
     return x, y, vx, vy
-
-
-"""test circle"""
-if __name__ == "__main__":
-    centripetal=-5.0
-    Xacc = np.array(range(1000))/10.0
-    Yacc = np.array([[i, 0.0, centripetal] for i in Xacc])
-    fig, ax = plt.subplots()
-    #plt.plot(Yacc[:,0], Yacc[:,1])
-    x, y, vx, vy = accToPos(Xacc, Yacc, 1.0, 0.0)
-    line, = plt.plot(x, y)
-    test, = plt.plot(vx, vy)
-    axis = plt.axes([0.25, 0.01, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(axis, 'centripetal force', valmin=-10.0, valmax=10.0, valinit=centripetal, valfmt='%0.2f')
-    def update(val):
-        Yacc = np.array([[i, 0.0, val] for i in Xacc])
-        x, y, vx, vy = accToPos(Xacc, Yacc, 1.0, 0.0)
-        line.set_xdata(x)
-        line.set_ydata(y)
-        test.set_xdata(vx)
-        test.set_ydata(vy)
-        fig.canvas.draw_idle()
-    slider.on_changed(update)
-    plt.show()
-
 
 def plotIntegration(Yacc, fig=None, ax=None):
     #lat lon zu Meter
@@ -116,7 +93,7 @@ def plotIntegration(Yacc, fig=None, ax=None):
     """
     
     """https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet"""
-    x, y = accToPos(Xacc, Yacc, 0, 0)
+    x, y, vx, vy = accToPos(Xacc, Yacc, 0, 0)
     
     YaccIntegratedY = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,1], x=Xacc, initial=0), x=Xacc, initial=0)
     YaccIntegratedZ = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,2], x=Xacc, initial=0), x=Xacc, initial=0)
@@ -137,94 +114,130 @@ def plotIntegration(Yacc, fig=None, ax=None):
             max(Ygpsnorm.flatten()),
             max(YaccIntegratedY.flatten()),
             max(YaccIntegratedZ.flatten())) * 1.1
-    print(m)
     ax.set_ylim(-m, m)
     ax.set_zlim(-m, m)
     #ax.legend()
 
 
-#test
+if __name__ == "__main__":
+    
+    """test circle"""
+    centripetal=-5.0
+    xCircle = np.array(range(1000))/10.0
+    yCircle = np.array([[i, 0.0, centripetal] for i in xCircle])
+    fig, ax = plt.subplots()
+    #plt.plot(yCircle[:,0], yCircle[:,1])
+    x, y, vx, vy = accToPos(xCircle, yCircle, 1.0, 0.0)
+    line, = plt.plot(x, y)
+    test, = plt.plot(vx, vy)
+    axis = plt.axes([0.25, 0.01, 0.65, 0.03], facecolor='lightgoldenrodyellow')
+    slider = Slider(axis, 'centripetal force', valmin=-10.0, valmax=10.0, valinit=centripetal, valfmt='%0.2f')
+    def update(val):
+        yCircle = np.array([[i, 0.0, val] for i in xCircle])
+        x, y, vx, vy = accToPos(xCircle, yCircle, 1.0, 0.0)
+        line.set_xdata(x)
+        line.set_ydata(y)
+        test.set_xdata(vx)
+        test.set_ydata(vy)
+        fig.canvas.draw_idle()
+    slider.on_changed(update)
+    plt.show()
+
+    """test integration of real acceleration data vs GPS"""
+    fig = plt.figure()
+    plotIntegration(Yacc, fig)
+    fig.legend()
+    fig.show()
+    
+    """test coordinates"""
+    def plotCoordinateShuffle():
+        """
+        +1 +-2
+           /\
+        +2 +-1
+        
+        -1 +-2
+           \/
+        -2 +-1
+        """
+        fig = plt.figure()
+        Yacc[:,2] = tmp[:,1]
+        Yacc[:,1] = tmp[:,2]
+        ax = fig.add_subplot(241, projection='3d')
+        ax.set_title("+1+2")
+        plotIntegration(Yacc, fig, ax)
+        
+        Yacc[:,2] = tmp[:,2]
+        Yacc[:,1] = tmp[:,1]
+        ax = fig.add_subplot(242, projection='3d')
+        ax.set_title("+2+1")
+        plotIntegration(Yacc, fig, ax)
+        
+        Yacc[:,2] = -tmp[:,1]
+        Yacc[:,1] = tmp[:,2]
+        ax = fig.add_subplot(243, projection='3d')
+        ax.set_title("-1+2")
+        plotIntegration(Yacc, fig, ax)
+        
+        Yacc[:,2] = -tmp[:,2]
+        Yacc[:,1] = tmp[:,1]
+        ax = fig.add_subplot(244, projection='3d')
+        ax.set_title("-2+1")
+        plotIntegration(Yacc, fig, ax)
+        
+        Yacc[:,2] = tmp[:,1]
+        Yacc[:,1] = -tmp[:,2]
+        ax = fig.add_subplot(245, projection='3d')
+        ax.set_title("+1-2")
+        plotIntegration(Yacc, fig, ax)
+        
+        Yacc[:,2] = tmp[:,2]
+        Yacc[:,1] = -tmp[:,1]
+        ax = fig.add_subplot(246, projection='3d')
+        ax.set_title("+2-1")
+        plotIntegration(Yacc, fig, ax)
+        
+        Yacc[:,2] = -tmp[:,1]
+        Yacc[:,1] = -tmp[:,2]
+        ax = fig.add_subplot(247, projection='3d')
+        ax.set_title("-1-2")
+        plotIntegration(Yacc, fig, ax)
+        
+        Yacc[:,2] = -tmp[:,2]
+        Yacc[:,1] = -tmp[:,1]
+        ax = fig.add_subplot(248, projection='3d')
+        ax.set_title("-2-1")
+        plotIntegration(Yacc, fig, ax)
+        
+        fig.show()
+        
+    plotCoordinateShuffle()
+    
+    
+    
+    
+
 """
-+1 +-2
-   /\
-+2 +-1
-
--1 +-2
-   \/
--2 +-1
-
-
-fig = plt.figure()
-Yacc[:,2] = tmp[:,1]
-Yacc[:,1] = tmp[:,2]
-ax = fig.add_subplot(241, projection='3d')
-ax.set_title("+1+2")
-plotIntegration(Yacc, fig, ax)
-
-Yacc[:,2] = tmp[:,2]
-Yacc[:,1] = tmp[:,1]
-ax = fig.add_subplot(242, projection='3d')
-ax.set_title("+2+1")
-plotIntegration(Yacc, fig, ax)
-
-Yacc[:,2] = -tmp[:,1]
-Yacc[:,1] = tmp[:,2]
-ax = fig.add_subplot(243, projection='3d')
-ax.set_title("-1+2")
-plotIntegration(Yacc, fig, ax)
-
-Yacc[:,2] = -tmp[:,2]
-Yacc[:,1] = tmp[:,1]
-ax = fig.add_subplot(244, projection='3d')
-ax.set_title("-2+1")
-plotIntegration(Yacc, fig, ax)
-
-Yacc[:,2] = tmp[:,1]
-Yacc[:,1] = -tmp[:,2]
-ax = fig.add_subplot(245, projection='3d')
-ax.set_title("+1-2")
-plotIntegration(Yacc, fig, ax)
-
-Yacc[:,2] = tmp[:,2]
-Yacc[:,1] = -tmp[:,1]
-ax = fig.add_subplot(246, projection='3d')
-ax.set_title("+2-1")
-plotIntegration(Yacc, fig, ax)
-
-Yacc[:,2] = -tmp[:,1]
-Yacc[:,1] = -tmp[:,2]
-ax = fig.add_subplot(247, projection='3d')
-ax.set_title("-1-2")
-plotIntegration(Yacc, fig, ax)
-
-Yacc[:,2] = -tmp[:,2]
-Yacc[:,1] = -tmp[:,1]
-ax = fig.add_subplot(248, projection='3d')
-ax.set_title("-2-1")
-plotIntegration(Yacc, fig, ax)
-
-fig.show()
-
-#def accToPos()
-vx = np.zeros(len(Xacc))
-vy = np.zeros(len(Xacc))
-x = np.zeros(len(Xacc))
-y = np.zeros(len(Xacc))
-#vy[0] = 1
-rightHandVector = np.array([1,0])
-for i in range(len(Xacc)-1):
-    dt = Xacc[i+1]-Xacc[i]
-    a = rotate(Yacc[i,1:], rightHandVector)
-    rightHandVector = Yacc[i, 1:]
-    aNext = rotate(Yacc[i+1,1:], rightHandVector)
-    x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
-    y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
-    vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
-    vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
-
-plt.figure()
-plt.plot(Yacc[:,0], Yacc[:,1])
-plt.plot(vx, vy)
-plt.plot(x, y)
-plt.show()
+def accToPos():
+    vx = np.zeros(len(Xacc))
+    vy = np.zeros(len(Xacc))
+    x = np.zeros(len(Xacc))
+    y = np.zeros(len(Xacc))
+    #vy[0] = 1
+    rightHandVector = np.array([1,0])
+    for i in range(len(Xacc)-1):
+        dt = Xacc[i+1]-Xacc[i]
+        a = rotate(Yacc[i,1:], rightHandVector)
+        rightHandVector = Yacc[i, 1:]
+        aNext = rotate(Yacc[i+1,1:], rightHandVector)
+        x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
+        y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
+        vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
+        vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
+    
+    plt.figure()
+    plt.plot(Yacc[:,0], Yacc[:,1])
+    plt.plot(vx, vy)
+    plt.plot(x, y)
+    plt.show()
 """
