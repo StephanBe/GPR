@@ -145,7 +145,9 @@ if __name__ == "__main__":
 
     """test integration of real acceleration data vs GPS"""
     fig = plt.figure()
-    plotIntegration(Yacc, fig)
+    ax = fig.add_subplot(111, projection='3d')
+    ax.view_init(0, -179)
+    plotIntegration(Yacc, fig, ax)
     fig.legend()
     fig.show()
     
@@ -211,7 +213,7 @@ if __name__ == "__main__":
         
         fig.show()
         
-    plotCoordinateShuffle()
+    #plotCoordinateShuffle()
     
     
     

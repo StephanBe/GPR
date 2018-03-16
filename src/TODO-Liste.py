@@ -26,11 +26,12 @@ Rotation, Ort.
 Kernel einstellen für ACC/GPS/whatever. Nachschauen, was die Parameter
 bewirken. 
 
-
+Orientierung des Autos in der Welt schätzen
+- integrierte Gyro-Daten mit Beschleunigungsdaten (Suche nach Erdbeschleunigung)
+korrigieren
+- z.B. mit Madgwick's algirithm / Mahony's algorithm / Kalman Filter
 
 DONE (chronologisch):
-Integration mit Kreisbeschleunigung getestet (numerisch instabil)
-
 Werte, die fälschlicherweise auf einen Zeitstempel fallen, auffächern anhand
 der Reihenfolge und des üblichen Abstands zwischen zwei Zeitstempeln.
 
@@ -48,4 +49,6 @@ Gaussian"). 1D-GPR dabei selbst einmal implementiert.
 Integration angefangen und einige Probleme gesehen.
 
 Vektor-Rotation ins Gedächtnis gerufen (vectorRotation.py)
+
+Integration mit Kreisbeschleunigung getestet (numerisch instabil)
 """
