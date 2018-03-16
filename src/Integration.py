@@ -62,16 +62,18 @@ def accToPos(Xacc, Yacc, vx_0=0, vy_0=0):
     forward = np.array([1,0])
     for i in range(len(Xacc)-1):
         dt = Xacc[i+1]-Xacc[i]
-        lefthand = np.array([-forward[1], forward[0]]) #y-Richtung auf Basis der x-Richtung
-        a = rotate(Yacc[i,1:], lefthand)
-        aNext = rotate(Yacc[i+1,1:], lefthand)
+        a = rotate(Yacc[i,1:], forward)
+        aNext = rotate(Yacc[i+1,1:], forward)
         x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
         y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
         #vx[i+1] = vx[i] + dt*a[0]
         #vy[i+1] = vy[i] + dt*a[1]
         vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
         vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
-        forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
+        #vertraue nicht auf die Richtung basierend auf Distanzen kleiner als 10 cm
+        epsilon = 0.01
+        if abs(x[i+1]-x[i]) > epsilon and abs(y[i+1]-y[i]) > epsilon:
+            forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
     return x, y, vx, vy
 
 def plotIntegration(Yacc, fig=None, ax=None):

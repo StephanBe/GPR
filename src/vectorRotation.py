@@ -13,8 +13,8 @@ from matplotlib.widgets import Slider
 #from sklearn.preprocessing import normalize
 
 def rotate(a, r):
-    normY = r / sqrt(r.T @ r)
-    normX = [normY[1], -normY[0]]
+    normX = r / sqrt(r.T @ r)
+    normY = [-normX[1], normX[0]]
     b = np.array([normX, normY]).T @ a
     return(b)
 
