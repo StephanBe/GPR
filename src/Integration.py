@@ -157,7 +157,7 @@ def my_integration(t, Yacc, vx_0=0, vy_0=0):
     return x, y, vx, vy
 
 def accToPos(Xacc, Yacc, vx_0=0, vy_0=0):
-    return velocity_verlet_integration(Xacc, Yacc, vx_0, vy_0)
+    return my_integration(Xacc, Yacc, vx_0, vy_0)
 
 def plotIntegration(Yacc, fig=None, ax=None):
     #lat lon zu Meter
@@ -167,7 +167,7 @@ def plotIntegration(Yacc, fig=None, ax=None):
     if ax==None:
         ax = fig.add_subplot(111, projection='3d')
     """plot it"""
-    ax.plot(Xgps, Ygpsnorm[:,0], Ygpsnorm[:,1], 'bx', label=u'GPS-Position')
+    ax.plot(Xgps, Ygpsnorm[:,0], Ygpsnorm[:,1], 'x', label=u'GPS-Position')
     """add gps prediction using 3D-GPR
     x = numpy.atleast_2d(numpy.linspace(min(Xgps), max(Xgps), 1000)).T
     kernel = RBF(1, (0.01, 10)) * ConstantKernel(1.0, (1, 100)) + WhiteKernel(noise_level=0.1 ** 2)
@@ -177,13 +177,18 @@ def plotIntegration(Yacc, fig=None, ax=None):
     #ax.plot(x, y_pred[:,0], y_pred[:,1], 'r-', label=u'Prediction')
     """
     
-    """https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet"""
-    x, y, vx, vy = accToPos(Xacc, Yacc, 0, 0)
+    
     
     YaccIntegratedY = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,1], x=Xacc, initial=0), x=Xacc, initial=0)
     YaccIntegratedZ = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,2], x=Xacc, initial=0), x=Xacc, initial=0)
-    ax.plot(Xacc, YaccIntegratedY, YaccIntegratedZ, 'r-', label=u'Integration of acceleration data (simple)')
-    ax.plot(Xacc, x, y, 'g--', label=u'Integration of acceleration data with rotation')
+    ax.plot(Xacc, YaccIntegratedY, YaccIntegratedZ, '-', label=u'Integration of acceleration data (assuming acceleration is measured in world coordinates)')
+    x, y, vx, vy = verlet_integration(Xacc, Yacc, 0, 0)
+    ax.plot(Xacc, x, y, '--', label=u'Integration of acceleration data with rotation (verlet integration)')
+    x, y, vx, vy = velocity_verlet_integration(Xacc, Yacc, 0, 0)
+    ax.plot(Xacc, x, y, '--', label=u'Integration of acceleration data with rotation (velocity verlet integration)')
+    x, y, vx, vy = my_integration(Xacc, Yacc, 0, 0)
+    ax.plot(Xacc, x, y, '--', label=u'Integration of acceleration data with rotation (my integration)')
+    
     """GP
     t_pred = np.atleast_2d(np.linspace(0, 30, 1000)).T
     #pos_pred, pos_sigma = gpr(Xacc, np.column_stack((x,y)), t_pred)
@@ -207,31 +212,46 @@ def plotIntegration(Yacc, fig=None, ax=None):
 if __name__ == "__main__":
     
     """test circle"""
-    centripetal=-1.0
-    xCircle = np.array(range(10000))/100.0
+    centripetal=-0.2
+    N = 0.01
+    xCircle = np.array(range(int(100*10**N)))/float(10**N)
     yCircle = np.array([[i, 0.0, centripetal] for i in xCircle])
     fig, ax = plt.subplots()
+    fig.subplots_adjust(bottom=0.2)
     #plt.plot(yCircle[:,0], yCircle[:,1])
     x, y, vx, vy = velocity_verlet_integration(xCircle, yCircle, 1.0, 0.0)
-    line1, = plt.plot(x, y, "y-", label='position with "velocity verlet" integration')
+    line1, = plt.plot(x, y, "--", label='position with "velocity verlet" integration')
+    x, y, vx, vy = verlet_integration(xCircle, yCircle, 1.0, 0.0)
+    line2, = plt.plot(x, y, "--", label='position with "verlet" integration')
     x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)
-    line2, = plt.plot(x, y, "--", label='position with my integration')
+    line3, = plt.plot(x, y, "-", label='position with my integration')
     test, = plt.plot(vx, vy, label='velocity')
-    axis = plt.axes([0.25, 0.01, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(axis, 'centripetal force', valmin=-1.0, valmax=1.0, valinit=centripetal, valfmt='%0.3f')
+    axis1 = plt.axes([0.25, 0.01, 0.65, 0.03], facecolor='lightgoldenrodyellow')
+    axis2 = plt.axes([0.25, 0.07, 0.65, 0.03], facecolor='green', label='resolution')
+    slider1 = Slider(axis1, 'centripetal force', valmin=-1.0, valmax=1.0, valinit=centripetal, valfmt='%0.3f')
+    slider2 = Slider(axis2, 'resolution', valmin=0.01, valmax=2.0, valinit=N, valfmt='%0.5f')
+    slider2.valtext.set_text(10**N)
     def update(val):
-        yCircle = np.array([[i, 0.0, val] for i in xCircle])
+        centripetal = slider1.val
+        N = slider2.val
+        xCircle = np.array(range(int(100*10**N)))/float(10**N)
+        slider2.valtext.set_text(10**N)
+        yCircle = np.array([[i, 0.0, centripetal] for i in xCircle])
         x, y, vx, vy = velocity_verlet_integration(xCircle, yCircle, 1.0, 0.0)
         line1.set_xdata(x)
         line1.set_ydata(y)
-        x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)
+        x, y, vx, vy = verlet_integration(xCircle, yCircle, 1.0, 0.0)
         line2.set_xdata(x)
         line2.set_ydata(y)
+        x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)
+        line3.set_xdata(x)
+        line3.set_ydata(y)
         test.set_xdata(vx)
         test.set_ydata(vy)
         fig.canvas.draw_idle()
     fig.legend()
-    slider.on_changed(update)
+    slider1.on_changed(update)
+    slider2.on_changed(update)
     plt.show()
 
     """test integration of real acceleration data vs GPS"""
