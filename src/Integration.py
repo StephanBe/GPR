@@ -52,29 +52,112 @@ Yacc[:,2] = -tmp[:,1] #beschleunigung nach rechts
 #android z -> car -x (hinten)
 Yacc[:,1] = -tmp[:,2] #beschleunigung nach vorn
 
-def accToPos(Xacc, Yacc, vx_0=0, vy_0=0):
+#https://en.wikipedia.org/wiki/Verlet_integration
+def verlet_integration(Xacc, Yacc, vx_0=0, vy_0=0):
     vx = np.zeros(len(Xacc))
     vy = np.zeros(len(Xacc))
     x = np.zeros(len(Xacc))
     y = np.zeros(len(Xacc))
     vx[0] = vx_0
     vy[0] = vy_0
-    forward = np.array([1,0])
-    for i in range(len(Xacc)-1):
+    forward = np.array([1.0,0.0])
+    dt = Xacc[1]-Xacc[0]
+    a = rotate(Yacc[0,1:], forward)
+    x[1] = vx[0]*dt + 1.0/2.0*a[0]*dt*dt
+    y[1] = vy[0]*dt + 1.0/2.0*a[1]*dt*dt
+    for i in range(1, len(Xacc)-1):
         dt = Xacc[i+1]-Xacc[i]
         a = rotate(Yacc[i,1:], forward)
-        aNext = rotate(Yacc[i+1,1:], forward)
-        x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
-        y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
-        #vx[i+1] = vx[i] + dt*a[0]
-        #vy[i+1] = vy[i] + dt*a[1]
-        vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
-        vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
+        x[i+1] = 2*x[i] - x[i-1] + a[0]*dt*dt
+        y[i+1] = 2*y[i] - y[i-1] + a[1]*dt*dt
         #vertraue nicht auf die Richtung basierend auf Distanzen kleiner als 10 cm
         epsilon = 0.01
         if abs(x[i+1]-x[i]) > epsilon and abs(y[i+1]-y[i]) > epsilon:
             forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
     return x, y, vx, vy
+
+#https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet
+def velocity_verlet_integration(Xacc, Yacc, vx_0=0, vy_0=0):
+    vx = np.zeros(len(Xacc))
+    vy = np.zeros(len(Xacc))
+    x = np.zeros(len(Xacc))
+    y = np.zeros(len(Xacc))
+    vx[0] = vx_0
+    vy[0] = vy_0
+    forward = np.array([1.0,0.0])
+    for i in range(len(Xacc)-1):
+        dt = Xacc[i+1]-Xacc[i]
+        a = rotate(Yacc[i,1:], forward)
+        x[i+1] = x[i] + vx[i]*dt + 1.0/2.0*a[0]*dt*dt
+        y[i+1] = y[i] + vy[i]*dt + 1.0/2.0*a[1]*dt*dt
+        #vertraue nicht auf die Richtung basierend auf Distanzen kleiner als 10 cm
+        epsilon = 0.01
+        if abs(x[i+1]-x[i]) > epsilon and abs(y[i+1]-y[i]) > epsilon:
+            forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
+        aNext = rotate(Yacc[i+1,1:], forward)
+        #Integration durch trapezoidal rule
+        vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
+        vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
+    return x, y, vx, vy
+
+#my integration
+def my_integration(t, Yacc, vx_0=0, vy_0=0):
+    vx = np.zeros(len(t))
+    vy = np.zeros(len(t))
+    x = np.zeros(len(t))
+    y = np.zeros(len(t))
+    vx[0] = vx_0
+    vy[0] = vy_0
+    forward = np.array([1.0,0.0])
+    #first iteration
+    dt = Xacc[1]-Xacc[0]
+    a = rotate(Yacc[0,1:], forward)
+    x[1] = vx[0]*dt + 1.0/2.0*a[0]*dt*dt
+    y[1] = vy[0]*dt + 1.0/2.0*a[1]*dt*dt
+    #vertraue nicht auf die Richtung basierend auf Distanzen kleiner als 10 cm
+    epsilon = 0.01
+    if abs(x[1]-x[0]) > epsilon and abs(y[1]-y[0]) > epsilon:
+        forward = np.array([x[1]-x[0], y[1]-y[0]])
+    aNext = rotate(Yacc[1,1:], forward)
+    #Integration durch trapezoidal rule
+    vx[1] = vx[0] + dt*(a[0] + aNext[0])/2
+    vy[1] = vy[0] + dt*(a[1] + aNext[1])/2
+    for i in range(1, len(t)-1):
+        dt = t[i+1]-t[i]
+        a = rotate(Yacc[i,1:], forward)
+        x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
+        y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
+        #vertraue nicht auf die Richtung basierend auf Distanzen kleiner als 10 cm
+        epsilon = 0.01
+        if abs(x[i+1]-x[i]) > epsilon and abs(y[i+1]-y[i]) > epsilon:
+            forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
+        aNext = rotate(Yacc[i+1,1:], forward)
+        #Integration durch trapezoidal rule
+        vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
+        vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
+        
+        #zentrale differenz für eine bessere Richtungsschätzung
+        tb = t[i]   - t[i-1]
+        ta = t[i+1] - t[i]
+        forward[0] = 1.0/(tb+ta)*(tb/ta*x[i+1] + (ta**2 - tb**2)/(ta*tb)*x[i] - ta/tb*x[i-1])
+        forward[1] = 1.0/(tb+ta)*(tb/ta*y[i+1] + (ta**2 - tb**2)/(ta*tb)*y[i] - ta/tb*y[i-1])
+        #korrigiere den Schritt mit der besseren Richtungsschätzung
+        a = rotate(Yacc[i,1:], forward)
+        x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
+        y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
+        #korrigiere die nächste Beschleunigung mit dem besseren Schritt
+        if abs(x[i+1]-x[i]) > epsilon and abs(y[i+1]-y[i]) > epsilon:
+            forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
+        aNext = rotate(Yacc[i+1,1:], forward)
+        #Integration durch trapezoidal rule
+        vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
+        vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
+        
+        
+    return x, y, vx, vy
+
+def accToPos(Xacc, Yacc, vx_0=0, vy_0=0):
+    return velocity_verlet_integration(Xacc, Yacc, vx_0, vy_0)
 
 def plotIntegration(Yacc, fig=None, ax=None):
     #lat lon zu Meter
@@ -124,24 +207,30 @@ def plotIntegration(Yacc, fig=None, ax=None):
 if __name__ == "__main__":
     
     """test circle"""
-    centripetal=-5.0
-    xCircle = np.array(range(1000))/10.0
+    centripetal=-1.0
+    xCircle = np.array(range(10000))/100.0
     yCircle = np.array([[i, 0.0, centripetal] for i in xCircle])
     fig, ax = plt.subplots()
     #plt.plot(yCircle[:,0], yCircle[:,1])
-    x, y, vx, vy = accToPos(xCircle, yCircle, 1.0, 0.0)
-    line, = plt.plot(x, y)
-    test, = plt.plot(vx, vy)
+    x, y, vx, vy = velocity_verlet_integration(xCircle, yCircle, 1.0, 0.0)
+    line1, = plt.plot(x, y, "y-", label='position with "velocity verlet" integration')
+    x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)
+    line2, = plt.plot(x, y, "--", label='position with my integration')
+    test, = plt.plot(vx, vy, label='velocity')
     axis = plt.axes([0.25, 0.01, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    slider = Slider(axis, 'centripetal force', valmin=-10.0, valmax=10.0, valinit=centripetal, valfmt='%0.2f')
+    slider = Slider(axis, 'centripetal force', valmin=-1.0, valmax=1.0, valinit=centripetal, valfmt='%0.3f')
     def update(val):
         yCircle = np.array([[i, 0.0, val] for i in xCircle])
-        x, y, vx, vy = accToPos(xCircle, yCircle, 1.0, 0.0)
-        line.set_xdata(x)
-        line.set_ydata(y)
+        x, y, vx, vy = velocity_verlet_integration(xCircle, yCircle, 1.0, 0.0)
+        line1.set_xdata(x)
+        line1.set_ydata(y)
+        x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)
+        line2.set_xdata(x)
+        line2.set_ydata(y)
         test.set_xdata(vx)
         test.set_ydata(vy)
         fig.canvas.draw_idle()
+    fig.legend()
     slider.on_changed(update)
     plt.show()
 

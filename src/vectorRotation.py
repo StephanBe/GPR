@@ -13,9 +13,9 @@ from matplotlib.widgets import Slider
 #from sklearn.preprocessing import normalize
 
 def rotate(a, r):
-    normX = r / sqrt(r.T @ r)
+    normX = r / sqrt(np.dot(r.T,r))
     normY = [-normX[1], normX[0]]
-    b = np.array([normX, normY]).T @ a
+    b = np.dot(np.array([normX, normY]).T, a)
     return(b)
 
 if __name__ == "__main__":
@@ -38,8 +38,8 @@ if __name__ == "__main__":
     
     vectorplot(a, "r-", label="vector")
     vectorplot(r, "g--", label="new basis")
-    vectorplot((r / sqrt(r.T @ r) / 2), "b--", label="new basis normalized")
-    vectorplot(([(r / sqrt(r.T @ r) / 2)[1], -(r / sqrt(r.T @ r) / 2)[0]]), "b--",
+    vectorplot((r / sqrt(np.dot(r.T, r)) / 2), "b--", label="new basis normalized")
+    vectorplot(([(r / sqrt(np.dot(r.T, r)) / 2)[1], -(r / sqrt(np.dot(r.T, r)) / 2)[0]]), "b--",
                label="new basis normalized")
     vectorplot(rotate(a, r), "r--", label="rotated vector")
     m = max(max(abs(a)),max(abs(r))) + 1
@@ -55,8 +55,8 @@ if __name__ == "__main__":
         ax.clear() #workaround becaue I could not update the "fill" part
         vectorplot(a, "r-", label="vector")
         vectorplot(r, "g-", label="new basis")
-        vectorplot((r / sqrt(r.T @ r) / 2), "b--", label="new basis normalized")
-        vectorplot(([(r / sqrt(r.T @ r) / 2)[1], -(r / sqrt(r.T @ r) / 2)[0]]), "b--",
+        vectorplot((r / sqrt(np.dot(r.T, r)) / 2), "b--", label="new basis normalized")
+        vectorplot(([(r / sqrt(np.dot(r.T, r)) / 2)[1], -(r / sqrt(np.dot(r.T, r)) / 2)[0]]), "b--",
                    label="new basis normalized")
         vectorplot(rotate(a, r), "r--", label="rotated vector")
         ax.set_xlim(-m, m)

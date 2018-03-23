@@ -51,4 +51,9 @@ Integration angefangen und einige Probleme gesehen.
 Vektor-Rotation ins Gedächtnis gerufen (vectorRotation.py)
 
 Integration mit Kreisbeschleunigung getestet (numerisch instabil)
+
+Problem bei Integration ist, dass durch die Schätzung der aktuellen Richtung
+durch die aktuelle und die vorangegangene Position in Kurven immer ein Drift
+nach außen geschieht. Besser: Approximation zusätzlich mit der zukünftigen
+Position (approximiert).
 """
