@@ -12,6 +12,7 @@ trajectory.py
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
+import Data as data
 
 ## set initial conditions and parameters
 g = 9.81            # acceleration due to gravity
@@ -26,23 +27,22 @@ vy0 = v0*np.sin(th)
 
 ## define function to compute f(X,t)
 def f_func(state,time):
+    t = np.arange(len(data.Xacc))[data.Xacc == time]
     f = np.zeros(4)    # create array to hold f vector
-    f[0] = state[2] # f[0] = x component of velocity
-    f[1] = state[3] # f[1] = x component of velocity
-    f[2] = 0        # f[2] = acceleration in x direction
-    f[3] = -g       # f[3] = acceleration in y direction
+    f[0] = state[state[0]] # f[0] = x component of velocity
+    f[1] = state[state[1]] # f[1] = x component of velocity
+    f[2] = data.Yacc[time,1]        # f[2] = acceleration in x direction
+    f[3] = data.Yacc[time,2]       # f[3] = acceleration in y direction
     return f
 
 ## set initial state vector and time array
 X0 = [ x0, y0, vx0, vy0]        # set initial state of the system
 t0 = 0.
-tf_str = input("Enter final time: ")
-tau_str = input("Enter time step: ")
+tf_str = 30
 tf = float(tf_str)
-tau = float(tau_str)
 
 # create time array starting at t0, ending at tf with a spacing tau
-t = np.arange(t0,tf,tau)
+t = data.Xacc
 
 ## solve ODE using odeint
 X = odeint(f_func,X0,t) # returns an 2-dimensional array with the

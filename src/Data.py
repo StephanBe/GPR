@@ -101,6 +101,7 @@ while i < len(Xacc)-1:
 
 
 if __name__ == "__main__":
+    pyplot.figure()
     pyplot.subplot(231)
     pyplot.plot(Xacc, label="original")
     pyplot.plot(Xacc_corrected2, "--", label="corrected by evenly distributing time")
@@ -108,7 +109,9 @@ if __name__ == "__main__":
     pyplot.title("Time Stamp\nOf Each Data Entry")
     pyplot.xlabel("$i$th entry")
     pyplot.ylabel("$t$ in $s$")
-    pyplot.legend()
+#==============================================================================
+#     pyplot.legend()
+#==============================================================================
     
     pyplot.subplot(232)
     pyplot.plot(Xacc[1:] - Xacc[:-1], label="original")
@@ -117,7 +120,9 @@ if __name__ == "__main__":
     pyplot.title("Time Elapsed\nBetween Two Following Entries")
     pyplot.xlabel("$i$th entry")
     pyplot.ylabel("$t_{i+1}-t_{i}$ in $s$")
-    pyplot.legend()
+#==============================================================================
+#     pyplot.legend()
+#==============================================================================
     
     pyplot.subplot(233)
     pyplot.title("Time Difference\nOf Actual Values To Constant Intervals")
@@ -129,16 +134,38 @@ if __name__ == "__main__":
     pyplot.xlabel("$i$th entry")
     pyplot.ylabel("$t_{measured}-t_{artificial}$ in s")
     #pyplot.plot(medianDelta, label="median delta")
-    pyplot.legend()
+#==============================================================================
+#     pyplot.legend()
+#==============================================================================
     #pyplot.plot(delta, label="original")
     #pyplot.plot(Xacc_corrected[1:]-Xacc_corrected[:-1], label="corrected")
     #pyplot.legend()
     pyplot.subplot(212)
-    pyplot.title("Acceleration")
-    pyplot.plot(Xacc, Yacc[:,0], label="original")
-    pyplot.plot(Xacc_corrected2, Yacc[:,0], "--", label="corrected by evenly distributing time")
-    pyplot.plot(Xacc_corrected, Yacc[:,0], "--", label="corrected by keeping a normal time frame")
+    pyplot.title("Car Acceleration to the left")
+    pyplot.plot(Xacc, Yacc[:,1], label="original")
+    pyplot.plot(Xacc_corrected2, Yacc[:,1], "--", label="corrected by evenly distributing time")
+    pyplot.plot(Xacc_corrected, Yacc[:,1], "--", label="corrected by keeping a normal time frame")
     pyplot.xlabel("$t$ in $s$")
     pyplot.ylabel("$a$ in $m*s^{-1}$")
     pyplot.legend()
+    pyplot.show()
+    
+    pyplot.figure()
+    pyplot.subplot(121)
+    pyplot.title("Car Position")
+    g = latlonToMeter(Ygps)
+    cb = pyplot.scatter(g[:,1], g[:,0], c=Xgps.flatten())
+    pyplot.colorbar(cb, label="$t$ in $s$")
+    pyplot.xlabel("longitude in $m$")
+    pyplot.ylabel("latitude in $m$")
+    pyplot.subplot(122)
+    pyplot.title("Car Acceleration")
+    pyplot.plot(Xacc, Yacc[:,0], label="$a_{down}$")
+    pyplot.plot(Xacc, Yacc[:,1], label="$a_{left}$")
+    pyplot.plot(Xacc, Yacc[:,2], label="$a_{back}$")
+    pyplot.xlabel("$t$ in $s$")
+    pyplot.ylabel("$a$ in $m*s^{-1}$")
+    pyplot.legend()
+    pyplot.tight_layout()
+    pyplot.show()
     

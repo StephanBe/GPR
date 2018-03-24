@@ -45,12 +45,12 @@ Xgyr = Data.Xgyr
 Ygyr = Data.Ygyr
 
 tmp = np.copy(Yacc)
-#android x -> car z  (unten)
-Yacc[:,0] = tmp[:,0] #beschleunigung nach unten
-#android y -> car -y (links)
-Yacc[:,2] = -tmp[:,1] #beschleunigung nach rechts
-#android z -> car -x (hinten)
-Yacc[:,1] = -tmp[:,2] #beschleunigung nach vorn
+#vorher: android x (nach unten beschleunigen)
+Yacc[:,0] = tmp[:,0] #danach: beschleunigung nach unten
+#vorher: android y (nach links beschleunigen)
+Yacc[:,2] = -tmp[:,1] #danach: beschleunigung nach rechts
+#vorher: android z (nach hinten beschleunigen)
+Yacc[:,1] = -tmp[:,2] #danach: beschleunigung nach vorn
 
 #https://en.wikipedia.org/wiki/Verlet_integration
 def verlet_integration(Xacc, Yacc, vx_0=0, vy_0=0):
@@ -168,16 +168,16 @@ def plotIntegration(Yacc, fig=None, ax=None):
         ax = fig.add_subplot(111, projection='3d')
     """plot it"""
     ax.plot(Xgps, Ygpsnorm[:,0], Ygpsnorm[:,1], 'x', label=u'GPS-Position')
-    """add gps prediction using 3D-GPR
-    x = numpy.atleast_2d(numpy.linspace(min(Xgps), max(Xgps), 1000)).T
-    kernel = RBF(1, (0.01, 10)) * ConstantKernel(1.0, (1, 100)) + WhiteKernel(noise_level=0.1 ** 2)
-    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=3, normalize_y=True)
-    gp.fit(Xgps, Ygpsnorm)
-    y_pred, sigma = gp.predict(x, return_std=True)
-    #ax.plot(x, y_pred[:,0], y_pred[:,1], 'r-', label=u'Prediction')
-    """
-    
-    
+#==============================================================================
+#     """add gps prediction using 3D-GPR"""
+#     x = np.atleast_2d(np.linspace(min(Xgps), max(Xgps), 10000)).T
+#     kernel = RBF(1, (0.01, 10)) * ConstantKernel(1.0, (1, 100)) + WhiteKernel(noise_level=0.1 ** 2)
+#     gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=3, normalize_y=True)
+#     gp.fit(Xgps, Ygpsnorm)
+#     y_pred, sigma = gp.predict(x, return_std=True)
+#     #ax.plot(x, y_pred[:,0], y_pred[:,1], 'r-', label=u'Prediction')
+#     
+#==============================================================================
     
     YaccIntegratedY = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,1], x=Xacc, initial=0), x=Xacc, initial=0)
     YaccIntegratedZ = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,2], x=Xacc, initial=0), x=Xacc, initial=0)
@@ -189,14 +189,13 @@ def plotIntegration(Yacc, fig=None, ax=None):
     x, y, vx, vy = my_integration(Xacc, Yacc, 0, 0)
     ax.plot(Xacc, x, y, '--', label=u'Integration of acceleration data with rotation (my integration)')
     
-    """GP
+    """GP"""
     t_pred = np.atleast_2d(np.linspace(0, 30, 1000)).T
     #pos_pred, pos_sigma = gpr(Xacc, np.column_stack((x,y)), t_pred)
     acc_pred, acc_sigma = gpr(Xacc.reshape(-1,1), Yacc, t_pred)
-    YaccIntegratedY = integrate.cumtrapz(integrate.cumtrapz(acc_pred[:,1], x=t_pred.flatten(), initial=0), x=t_pred.flatten(), initial=0)
-    YaccIntegratedZ = integrate.cumtrapz(integrate.cumtrapz(acc_pred[:,2], x=t_pred.flatten(), initial=0), x=t_pred.flatten(), initial=0)
+    YaccIntegratedY, YaccIntegratedZ, vx, vy = accToPos(t_pred, acc_pred, 0, 0)
     ax.plot(t_pred, YaccIntegratedY, YaccIntegratedZ, 'b-.', label=u'Integration of GP-predicted acceleration')
-    """
+    """"""
     ax.set_xlabel(u'time in $s$')
     ax.set_ylabel(u'x position in $m$')
     ax.set_zlabel(u'y position in $m$')
@@ -266,12 +265,13 @@ if __name__ == "__main__":
     def plotCoordinateShuffle():
         """
         +1 +-2
-           /\
+           `/
         +2 +-1
-        
+           ||
         -1 +-2
-           \/
+           |\
         -2 +-1
+           ||
         """
         fig = plt.figure()
         Yacc[:,2] = tmp[:,1]
@@ -324,7 +324,7 @@ if __name__ == "__main__":
         
         fig.show()
         
-    #plotCoordinateShuffle()
+    plotCoordinateShuffle()
     
     
     
