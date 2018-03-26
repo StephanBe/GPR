@@ -7,7 +7,13 @@ Created on Thu Jan 25 13:14:50 2018
 
 
 """
-Integration XY-Fehler in Integration.py: X(Yacc[i,1]) vorwärts; Y(Yacc[i,2]) rechts
+In "Plot Multivariate Gaussian.py":
+    sigma_star = np.diagonal(sigma_star).reshape(-1,1)
+Ist das richtig? Die Formeln aus den Quellen nehmen für sigma_star (oder
+K_posterior) immer K_star_star, was ja eine NxN Matrix ist (N Anzahl der
+vorherzusagenden Elemente).
+
+Integration XY-Fehler in Integration.py: X(Yacc[i,1]) vorwärts; Y(Yacc[i,2]) links
 
 Length-Scale im RBF-Kernel ist, wie stark die Korrelation je Zeitschritt
 bleibt (klein -> kaum Korrelation je weiter weg, groß -> stärkere Korrelation).
@@ -55,5 +61,12 @@ Integration mit Kreisbeschleunigung getestet (numerisch instabil)
 Problem bei Integration ist, dass durch die Schätzung der aktuellen Richtung
 durch die aktuelle und die vorangegangene Position in Kurven immer ein Drift
 nach außen geschieht. Besser: Approximation zusätzlich mit der zukünftigen
-Position (approximiert).
+Position (approximiert). Und Bug mit den epsilon-Werten behoben, dadurch ist
+nun auch eine höhere Auflösung zuträglich für die Genauigkeit der Integration.
+
+GPS GP Kernel gefunden, sodass GPS auch nichtstationär sein kann:
+Linearerer Kernel: https://www.cs.toronto.edu/~duvenaud/cookbook/
+bzw. Polynomial mit p=1: https://de.wikipedia.org/wiki/Gau%C3%9F-Prozess
+In Plot Multivariate Gaussian implementiert. Leider gibt es den linearen Kernel
+nicht für scikit-learn.
 """

@@ -12,7 +12,8 @@ from math import sqrt, cos, sin
 from matplotlib.widgets import Slider
 #from sklearn.preprocessing import normalize
 
-def rotate(a, r):
+def rotate(a, newXAxis):
+    r = newXAxis
     normX = r / sqrt(np.dot(r.T,r))
     normY = [-normX[1], normX[0]]
     b = np.dot(np.array([normX, normY]).T, a)
