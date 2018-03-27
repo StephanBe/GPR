@@ -181,14 +181,17 @@ def plotIntegration(Yacc, fig=None, ax=None):
     ax.plot(Xgps, lon, lat, 'x', label=u'GPS-Position') #plotting ^ lat and > lon
     
     """add gps prediction using 3D-GPR"""
-    x = np.atleast_2d(np.linspace(min(Xgps), max(Xgps), 10000)).T
-    kernel = RBF(1, (0.01, 10)) * ConstantKernel(1.0, (1, 100)) + WhiteKernel(noise_level=0.1 ** 2) + DotProduct(1,(0.1,10))
+    xGP = np.atleast_2d(np.linspace(min(Xgps), max(Xgps), 10000)).T
+    kernel = RBF(1, (0.1, 100)) *\
+             ConstantKernel(1.0, (1, 100)) +\
+             DotProduct(0.01,(0.01,5)) *\
+             ConstantKernel(1.0, (1, 100))# + WhiteKernel(noise_level=0.1 ** 2)
     gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=3, normalize_y=True)
     gp.fit(Xgps, Ygpsnorm)
-    y_pred, sigma = gp.predict(x, return_std=True)
-    lat = y_pred[:,0]
-    lon = y_pred[:,1]
-    ax.plot(x, lon, lat, 'y-', label=u'Prediction')
+    y_pred, sigma = gp.predict(xGP, return_std=True)
+    latGP = y_pred[:,0]
+    lonGP = y_pred[:,1]
+    ax.plot(xGP, lonGP, latGP, 'y-', label=u'Prediction')
     
     """get initial values"""
     v0 = np.array([0.0, 0.0])
@@ -199,13 +202,15 @@ def plotIntegration(Yacc, fig=None, ax=None):
         dt = x[i] - x[i-1]
         if isMoving(dx, dy, dt):
             moving = i
-            print(dx)
-            print(dy)
-            print(dt)
-            print(i)
-            print(sqrt(dx*dx+dy*dy)/dt)
+            print("calculating initial forward direction...")
+            print("dx: "+str(dx))
+            print("dy: "+str(dy))
+            print("dt: "+str(dt))
+            print("first noticable movement at iteration: "+str(i))
+            print("speed in m/s: "+str(sqrt(dx*dx+dy*dy)/dt))
             forward = np.array([dx, dy])
-            print(forward)
+            print("calculated initial forward vector: "+str(forward))
+            print("(normalization is later done)")
             break
     lonFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,FORWARD], x=Xacc, initial=v0[0]), x=Xacc, initial=0)
     latFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,LEFT], x=Xacc, initial=v0[1]), x=Xacc, initial=0)
@@ -217,7 +222,7 @@ def plotIntegration(Yacc, fig=None, ax=None):
     ax.plot(Xacc, lonFromAcc, latFromAcc, '--', label=u'$\int\int a_{original}$d$t$ (velocity verlet integration)')
     lonFromAcc, latFromAcc = my_integration(Xacc, Yacc, v0[0], v0[1], forward)[0:2]
     ax.plot(Xacc, lonFromAcc, latFromAcc, 'b--', label=u'$\int\int a_{original}$d$t$ (my integration)')
-    ax.scatter(x[moving], lon[moving], lat[moving], c="r", label=u'point determining the direction')
+    ax.scatter(x[moving], lon[moving], lat[moving], c="r", label=u'point determining the initial direction')
     
     """GP"""
     t_pred = np.atleast_2d(np.linspace(0, 30, 1000)).T

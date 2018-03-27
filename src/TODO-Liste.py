@@ -65,8 +65,9 @@ Position (approximiert). Und Bug mit den epsilon-Werten behoben, dadurch ist
 nun auch eine höhere Auflösung zuträglich für die Genauigkeit der Integration.
 
 GPS GP Kernel gefunden, sodass GPS auch nichtstationär sein kann:
-Linearerer Kernel: https://www.cs.toronto.edu/~duvenaud/cookbook/
-bzw. Polynomial mit p=1: https://de.wikipedia.org/wiki/Gau%C3%9F-Prozess
-In Plot Multivariate Gaussian implementiert. Leider gibt es den linearen Kernel
-nicht für scikit-learn.
+- Linearerer Kernel: https://www.cs.toronto.edu/~duvenaud/cookbook/
+- bzw. Polynomial mit p=1: https://de.wikipedia.org/wiki/Gau%C3%9F-Prozess
+- oder auch Dot Product Kernel.
+In Plot Multivariate Gaussian implementiert. In scikit-learn kann man dafür
+den DotProduct kernel nehmen.
 """
