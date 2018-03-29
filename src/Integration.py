@@ -181,7 +181,7 @@ def plotIntegration(Yacc, fig=None, ax=None):
     ax.plot(Xgps, lon, lat, 'x', label=u'GPS-Position') #plotting ^ lat and > lon
     
     """add gps prediction using 3D-GPR"""
-    xGP = np.atleast_2d(np.linspace(min(Xgps), max(Xgps), 10000)).T
+    xGP = np.atleast_2d(np.linspace(min(Xgps), max(Xgps), 100)).T
     kernel = RBF(1, (0.1, 100)) *\
              ConstantKernel(1.0, (1, 100)) +\
              DotProduct(0.01,(0.01,5)) *\
@@ -192,6 +192,9 @@ def plotIntegration(Yacc, fig=None, ax=None):
     latGP = y_pred[:,0]
     lonGP = y_pred[:,1]
     ax.plot(xGP, lonGP, latGP, 'y-', label=u'Prediction')
+    samples = gp.sample_y(xGP, 20)
+    for i in range(samples.shape[2]):
+        ax.plot(xGP, samples[:,0,i], samples[:,1,i], 'y--', alpha=.5, linewidth=0.5)
     
     """get initial values"""
     v0 = np.array([0.0, 0.0])

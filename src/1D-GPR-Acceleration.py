@@ -68,37 +68,38 @@ pyplot.legend()
 """plot acceleration"""
 pyplot.subplot(122)
 pyplot.title("Acceleration Data With GPR-Prediction")
-pyplot.plot(Xacc, Yacc[:,0], 'r-', label=u'$a_x$')
 
 """GP regression acceleration x"""
 x = numpy.atleast_2d(numpy.linspace(-5, 35, 10000)).T
 
 y_pred, sigma = gpr(Xacc, Yacc[:,0], x)
-pyplot.plot(x, y_pred, 'r--', label=u'Prediction $a_x$')
+pyplot.plot(x, y_pred, 'r--', label=u'Prediction $a_x$', linewidth=0.5)
 pyplot.fill(numpy.concatenate([x, x[::-1]]),
          numpy.concatenate([y_pred - 1.9600 * sigma,
                         (y_pred + 1.9600 * sigma)[::-1]]),
-         alpha=.5, fc='r', ec='None', label='95% confidence interval')
-
-pyplot.plot(Xacc, Yacc[:,1], 'g-', label=u'$a_y$')
+         alpha=.3, fc='r', ec='None', label='95% confidence interval')
+#original data
+pyplot.plot(Xacc, Yacc[:,0], 'r-', label=u'$a_x$', linewidth=0.5)
 
 """GP regression acceleration y"""
 y_pred, sigma = gpr(Xacc, Yacc[:,1], x)
-pyplot.plot(x, y_pred, 'g--', label=u'Prediction $a_y$')
+pyplot.plot(x, y_pred, 'g--', label=u'Prediction $a_y$', linewidth=0.5)
 pyplot.fill(numpy.concatenate([x, x[::-1]]),
          numpy.concatenate([y_pred - 1.9600 * sigma,
                         (y_pred + 1.9600 * sigma)[::-1]]),
-         alpha=.5, fc='g', ec='None', label='95% confidence interval')
-    
-pyplot.plot(Xacc, Yacc[:,2], 'b-', label=u'$a_z$')
+         alpha=.3, fc='g', ec='None', label='95% confidence interval')
+#original data
+pyplot.plot(Xacc, Yacc[:,1], 'g-', label=u'$a_y$', linewidth=0.5)
 
 """GP regression acceleration z"""
 y_pred, sigma = gpr(Xacc, Yacc[:,2], x)
-pyplot.plot(x, y_pred, 'b--', label=u'Prediction $a_z$')
+pyplot.plot(x, y_pred, 'b--', label=u'Prediction $a_z$', linewidth=0.5)
 pyplot.fill(numpy.concatenate([x, x[::-1]]),
          numpy.concatenate([y_pred - 1.9600 * sigma,
                         (y_pred + 1.9600 * sigma)[::-1]]),
-         alpha=.5, fc='b', ec='None', label='95% confidence interval')
+         alpha=.3, fc='b', ec='None', label='95% confidence interval')
+#original data
+pyplot.plot(Xacc, Yacc[:,2], 'b-', label=u'$a_z$', linewidth=0.5)
 
 pyplot.xlabel('$t$ in $s$')
 pyplot.ylabel('$a$ in $m/s^2$')
