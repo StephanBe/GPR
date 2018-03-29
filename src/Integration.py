@@ -196,7 +196,9 @@ def plotIntegration(Yacc, fig=None, ax=None):
     ax.plot(xGP, lonGP, latGP, 'y-', label=u'Prediction')
     samples = gp.sample_y(xGP, 20)
     for i in range(samples.shape[2]):
-        ax.plot(xGP, samples[:,0,i], samples[:,1,i], 'y--', alpha=.5, linewidth=0.5)
+        latGP = samples[:,0,i]
+        lonGP = samples[:,1,i]
+        ax.plot(xGP, lonGP, latGP, 'y--', alpha=.5, linewidth=0.5)
     
     """get initial values"""
     v0 = np.array([0.0, 0.0])
@@ -230,9 +232,12 @@ def plotIntegration(Yacc, fig=None, ax=None):
     ax.scatter(x[moving], lon[moving], lat[moving], c="r", label=u'point determining the initial direction')
     
     """GP"""
-    t_pred = np.atleast_2d(np.linspace(0, 30, 1000)).T
+    t_pred = np.atleast_2d(np.linspace(min(Xacc), max(Xacc), 1000)).T
     #pos_pred, pos_sigma = gpr(Xacc, np.column_stack((x,y)), t_pred)
     acc_pred, acc_sigma = gpr(Xacc.reshape(-1,1), Yacc, t_pred)
+    #Normalization here, knowing the car does not move for the first 120
+    #data entries is cheating:
+    #acc_pred[:,1:3] = acc_pred[:,1:3]-np.mean(acc_pred[0:120,1:3], axis=0)
     lonFromAcc, latFromAcc = accToPos(t_pred, acc_pred, v0[0], v0[1], forward)[0:2]
     ax.plot(t_pred, lonFromAcc, latFromAcc, 'g-.', label=u'$\int\int a_{GPR}$d$t$ with object coordinates (my integration)')
     """"""

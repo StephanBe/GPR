@@ -7,15 +7,11 @@ Created on Thu Jan 25 13:14:50 2018
 
 
 """
-scipy.integrate.ode anschauen für Integration
-
 In "Plot Multivariate Gaussian.py":
     sigma_star = np.diagonal(sigma_star).reshape(-1,1)
 Ist das richtig? Die Formeln aus den Quellen nehmen für sigma_star (oder
 K_posterior) immer K_star_star, was ja eine NxN Matrix ist (N Anzahl der
 vorherzusagenden Elemente).
-
-Integration XY-Fehler in Integration.py: X(Yacc[i,1]) vorwärts; Y(Yacc[i,2]) links
 
 Length-Scale im RBF-Kernel ist, wie stark die Korrelation je Zeitschritt
 bleibt (klein -> kaum Korrelation je weiter weg, groß -> stärkere Korrelation).
@@ -38,6 +34,8 @@ Orientierung des Autos in der Welt schätzen
 - integrierte Gyro-Daten mit Beschleunigungsdaten (Suche nach Erdbeschleunigung)
 korrigieren
 - z.B. mit Madgwick's algirithm / Mahony's algorithm / Kalman Filter
+
+scipy.integrate.ode anschauen für Integration
 
 DONE (chronologisch):
 Werte, die fälschlicherweise auf einen Zeitstempel fallen, auffächern anhand
@@ -72,4 +70,15 @@ GPS GP Kernel gefunden, sodass GPS auch nichtstationär sein kann:
 - oder auch Dot Product Kernel.
 In Plot Multivariate Gaussian implementiert. In scikit-learn kann man dafür
 den DotProduct kernel nehmen.
+
+Integration XY-Fehler in Integration.py:
+X(Yacc[i,1]) vorwärts; Y(Yacc[i,2]) links
+Das lag vielmehr an dem Offset der Beschleunigungsdaten, wodurch sich das
+Auto virtuell langsam im Stand drehte. Mit den Daten von
+Erprobung\\Fahrsicherheitstraining\\Ausweichen Touran
+bei stehendem Auto (bis etwa 120ster Eintrag) und der Anweisung
+Yacc[:,1] = Yacc[:,1]-mean(Yacc[0:120,1])
+Yacc[:,2] = Yacc[:,2]-mean(Yacc[0:120,2])
+erstmal kaschiert.
+Das muss dann in einer finalen Lösung ordentlicher gemacht werden.
 """

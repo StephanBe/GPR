@@ -115,10 +115,19 @@ while i < len(Xacc)-1:
 #[ 9.88905903 -0.11588741 -0.19282377]
 #print(numpy.median(Yacc[1:120,:], axis=0))
 #[ 9.921572  -0.1340753 -0.2106898]
-Yacc[:,0] = Yacc[:,0]+(9.81-9.88905903)
-Yacc[:,1] = Yacc[:,1]+(0.11588741)
-Yacc[:,2] = Yacc[:,2]+(0.19282377)
-
+diff = [-9.81+9.88905903, -0.11588741, -0.19282377]
+#diff = numpy.sum(numpy.cumsum(Yacc[0:120,:], axis=0), axis=0)/120/120
+Yacc[:,0] = Yacc[:,0]-diff[0]
+Yacc[:,1] = Yacc[:,1]-diff[1]
+Yacc[:,2] = Yacc[:,2]-diff[2]
+print()
+print("THE ACCELERATION VALUES ARE REDUCED BY "+
+      str(diff)+
+      " TO")
+print("CALIBRATE THEM LANDING ON 0 MOVEMENT AFTER 120 ENTRIES FROM DATA SET")
+print("VUFO/Erprobung/Fahrsicherheitstraining/Ausweichen Touran")
+print("THIS SHOULD BE DONE PROPERLY INSTEAD IN A PRODUCTIVE VERSION!")
+print()
 
 if __name__ == "__main__":
     pyplot.figure()
