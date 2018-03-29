@@ -80,97 +80,178 @@ pyplot.subplot(224)
 plot_gp_prio_samples(3, 2)
 pyplot.show()
 
-
-
-noise=1
-def plot_gp2(x=np.array([[0.0],[1.04],[1.08],[1.12],[3.0]]),
-            f=np.array([[0,0],[0.1,-0.1],[1,0],[3,1],[5,1]]), ndata=1, s=3.0, l=10.0, ax=None):
-    if ax == None:
-        fig= pyplot.figure()
-        ax = fig.add_subplot(111)
-        fig.subplots_adjust(bottom=0.2)
-    minx = min(x)
-    maxx = max(x)
-    x=x[:ndata,:]
-    minf = np.min(f, axis=0)
-    maxf = np.max(f, axis=0)
-    f=f[:ndata,:]
-    f1 = np.atleast_2d(f[:,0]).T
-    f2 = np.atleast_2d(f[:,1]).T
-    K = kernel(x, x, s, l)+np.eye(ndata)*noise
-    x_star = np.linspace(minx-0.1*abs(minx), maxx+0.1*abs(maxx), n).reshape(-1, 1)
-    K_star = kernel(x, x_star, s, l)
-    K_star_star = kernel(x_star, x_star, s, l)+np.eye(n)*noise
-    mu_star1 = mu(x_star) + K_star.T @ np.linalg.inv(K) @ (f1 - mu(x))
-    mu_star2 = mu(x_star) + K_star.T @ np.linalg.inv(K) @ (f2 - mu(x))
-    #mu_star = mymu(x_star, x, f) + K_star.T @ np.linalg.inv(K) @ (f - mymu(x, x, f))
-    sigma_star = K_star_star - K_star.T @ np.linalg.inv(K) @ K_star
-    ax.plot(mu_star1, mu_star2, label='prediction')
-    sigma_star = np.diagonal(sigma_star).reshape(-1,1)#test
-
-    ax.fill(np.concatenate([mu_star1, mu_star1[::-1]]),
-             np.concatenate([mu_star2 - 1.9600 * sigma_star,
-                            (mu_star2 + 1.9600 * sigma_star)[::-1]]),
-             alpha=.3, fc='b', ec='None', label='95% confidence interval')
-    ax.plot(f[:,0], f[:,1], ".", label='data')
-    ax.set_xlim(minf[0]-0.1*abs(maxf[0]-minf[0]),maxf[0]+0.1*abs(maxf[0]-minf[0]))
-    ax.set_ylim(minf[1]-0.1*abs(maxf[0]-minf[1]),maxf[1]+0.1*abs(maxf[1]-minf[0]))
-    ax.legend()
-    ax.set_title('Posterior transformed by data (slider)')
-
 def plot_gp(x=np.array([[-4.0],[0.0],[1.0],[2.0],[3.0]]),
-            f=np.array([[-2],[1],[2],[2],[0.5]]), ndata=1, ax=None):
+            f=np.array([[-2],[1],[2],[2],[0.5]]), ndata=1,
+            s=3, l=10, noise=1, ax=None, normalize=True):
     if ax == None:
         ax = pyplot.figure().add_subplot(111)
-    s = 3
-    l = 10
+    meanf = None
+    stdf = None
     minx = min(x)
     maxx = max(x)
-    x=x[:ndata,:]
     minf = min(f)
     maxf = max(f)
+    if normalize:
+        meanf = np.mean(f, axis=0)
+        stdf = np.std(f, axis=0)
+        f = (f-meanf)/stdf
+    x=x[:ndata,:]
     f=f[:ndata,:]
     K = kernel(x, x, s, l)+np.eye(ndata)*noise
-    x_star = np.linspace(minx-0.1*abs(minx), maxx+0.1*abs(maxx), n).reshape(-1, 1)
+    #x_star = np.linspace(minx-0.1*abs(minx), maxx+0.1*abs(maxx), n).reshape(-1, 1)
+    x_star = np.linspace(minx, maxx, n).reshape(-1, 1)
     K_star = kernel(x, x_star, s, l)
     K_star_star = kernel(x_star, x_star, s, l)+np.eye(n)*noise
     mu_star = mu(x_star) + K_star.T @ np.linalg.inv(K) @ (f - mu(x))
     #mu_star = mymu(x_star, x, f) + K_star.T @ np.linalg.inv(K) @ (f - mymu(x, x, f))
     sigma_star = K_star_star - K_star.T @ np.linalg.inv(K) @ K_star
-    ax.plot(x_star, mu_star, label='prediction')
+    if normalize:
+        mu_star = mu_star*stdf + meanf
+        f = f*stdf + meanf
     sigma_star = np.diagonal(sigma_star).reshape(-1,1)#test
+    ax.plot(x_star, mu_star, label='prediction')
     ax.fill(np.concatenate([x_star, x_star[::-1]]),
              np.concatenate([mu_star - 1.9600 * sigma_star,
                             (mu_star + 1.9600 * sigma_star)[::-1]]),
              alpha=.3, fc='b', ec='None', label='95% confidence interval')
     ax.plot(x, f, ".", label='data')
-    ax.set_ylim(minf-0.1*abs(minf),maxf+0.1*abs(maxf))
+    ax.set_ylim(minf-0.3*abs(maxf-minf),maxf+0.3*abs(maxf-minf))
     ax.set_title('Posterior transformed by data (slider)')
+
 fig = pyplot.figure()
 fig.subplots_adjust(bottom=0.2)
+#ax = fig.add_subplot(111, projection='3d')
 ax = fig.add_subplot(111)
-axdata = fig.add_axes([0.38,0.01,0.50,0.03])
-axsigma = fig.add_axes([0.38,0.05,0.50,0.03])
-axlength = fig.add_axes([0.38,0.09,0.50,0.03])
-gps = Data.latlonToMeter(Data.Ygps)
+axdata = fig.add_axes([0.38,0.14,0.50,0.03])
+axsigma = fig.add_axes([0.38,0.09,0.50,0.03])
+axlength = fig.add_axes([0.38,0.05,0.50,0.03])
+axnoise = fig.add_axes([0.38,0.01,0.50,0.03])
+gps = Data.Ygps#Data.latlonToMeter(Data.Ygps)
 gpsy = gps[:,0].reshape(-1,1) #lat
 gpsx = gps[:,1].reshape(-1,1) #lon
-sdata = Slider(axdata, 'number of data points', valmin=1, valmax=len(gpsx), valinit=5, valfmt='%0.0f')
-ssigma = Slider(axsigma, 'sigma', valmin=0.0001, valmax=10.0, valinit=2.0, valfmt='%0.2f')
-slength = Slider(axlength, 'length_scale', valmin=0.0001, valmax=50.0, valinit=10.0, valfmt='%0.2f')
-#plot_gp(gpsx, gpsy, 5, ax)
-plot_gp2(Data.Xgps, gps, 5, 2, 10, ax)
+#==============================================================================
+# s = 90000
+# l = 60
+# noise=9
+#==============================================================================
+s=0.1
+l=10
+noise=0.0001
+sdata = Slider(axdata, 'number of data points', valmin=1, valmax=len(gpsx), valinit=len(gpsx), valfmt='%0.0f')
+ssigma = Slider(axsigma, 'sigma', valmin=0.01, valmax=10, valinit=s, valfmt='%0.3f')
+slength = Slider(axlength, 'length scale', valmin=1, valmax=100.0, valinit=l, valfmt='%0.4f')
+snoise = Slider(axnoise, 'noise', valmin=0.000001, valmax=0.0001, valinit=noise, valfmt='%0.5f')
+plot_gp(Data.Xgps, gpsy, len(gpsx), s, l, noise, ax)
+#plot_gp2(Data.Xgps, gps, len(gpsx), 90000, 60, 9, ax)
 def update(val):
     ndata = int(round(sdata.val))
     s = ssigma.val
     l = slength.val
+    noise = snoise.val
     ax.clear() #workaround becaue I could not update the "fill" part
-    #plot_gp(gpsx, gpsy, ndata, ax)
-    plot_gp2(Data.Xgps, gps, ndata, s, l, ax)
+    plot_gp(Data.Xgps, gpsy, ndata, s, l, noise, ax)
+    #plot_gp2(Data.Xgps, gps, ndata, s, l, noise, ax)
     fig.canvas.draw_idle()
 sdata.on_changed(update)
 ssigma.on_changed(update)
 slength.on_changed(update)
+snoise.on_changed(update)
+
+
+def plot_gp2(x=np.array([[0.0],[1.04],[1.08],[1.12],[3.0]]),
+            f=np.array([[0,0],[0.1,-0.1],[1,0],[3,1],[5,1]]), ndata=1,
+            s=3.0, l=10.0, noise=0, ax=None, normalize=True):
+    if ax == None:
+        fig= pyplot.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        fig.subplots_adjust(bottom=0.2)
+    meanf = None
+    stdf = None
+    minx = min(x)
+    maxx = max(x)
+    minf = np.min(f, axis=0)
+    maxf = np.max(f, axis=0)
+    if normalize:
+        meanf = np.mean(f, axis=0)
+        stdf = np.std(f, axis=0)
+        f = (f-meanf)/stdf
+    x=x[:ndata,:]
+    f=f[:ndata,:]
+    f1 = np.atleast_2d(f[:,0]).T
+    f2 = np.atleast_2d(f[:,1]).T
+    K = kernel(x, x, s, l)+np.eye(ndata)*noise
+    #x_star = np.linspace(minx-0.1*abs(minx), maxx+0.1*abs(maxx), n).reshape(-1, 1)
+    x_star = np.linspace(minx, maxx, n).reshape(-1, 1)
+    K_star = kernel(x, x_star, s, l)
+    K_star_star = kernel(x_star, x_star, s, l)+np.eye(n)*noise
+    mu_star1 = mu(x_star) + K_star.T @ np.linalg.inv(K) @ (f1 - mu(x))
+    mu_star2 = mu(x_star) + K_star.T @ np.linalg.inv(K) @ (f2 - mu(x))
+    #mu_star = mymu(x_star, x, f) + K_star.T @ np.linalg.inv(K) @ (f - mymu(x, x, f))
+    if normalize:
+        mu_star1 = mu_star1*stdf + meanf
+        mu_star2 = mu_star2*stdf + meanf
+        f = f*stdf + meanf
+    sigma_star = K_star_star - K_star.T @ np.linalg.inv(K) @ K_star
+    sigma_star = np.diagonal(sigma_star).reshape(-1,1)#test
+    
+    """plot"""
+    ax.plot(x_star.flatten(), mu_star1.flatten(), mu_star2.flatten(), label='prediction')
+
+#==============================================================================
+#     ax.fill(np.concatenate([mu_star1, mu_star1[::-1]]),
+#              np.concatenate([mu_star2 - 1.9600 * sigma_star,
+#                             (mu_star2 + 1.9600 * sigma_star)[::-1]]),
+#              alpha=.3, fc='b', ec='None', label='95% confidence interval')
+#==============================================================================
+    ax.plot(x, f[:,0], f[:,1], ".", label='data')
+    ax.set_xlim(minx[0]-0.3*abs(maxx[0]-minx[0]),maxx[0]+0.3*abs(maxx[0]-minx[0]))
+    ax.set_ylim(minf[0]-0.3*abs(maxf[0]-minf[0]),maxf[0]+0.3*abs(maxf[0]-minf[0]))
+    ax.set_zlim(minf[1]-0.3*abs(maxf[1]-minf[1]),maxf[1]+0.3*abs(maxf[1]-minf[1]))
+    ax.invert_yaxis()
+    ax.set_xlabel(u'time in $s$')
+    ax.set_ylabel(u'latitude in $°$')
+    ax.set_zlabel(u'longitude in $°$')
+    ax.legend()
+    ax.set_title('Posterior transformed by data (slider)')
+
+fig2 = pyplot.figure()
+fig2.subplots_adjust(bottom=0.2)
+ax2 = fig2.add_subplot(111, projection='3d')
+#ax = fig2.add_subplot(111)
+axdata2 = fig2.add_axes([0.38,0.14,0.50,0.03])
+axsigma2 = fig2.add_axes([0.38,0.09,0.50,0.03])
+axlength2 = fig2.add_axes([0.38,0.05,0.50,0.03])
+axnoise2 = fig2.add_axes([0.38,0.01,0.50,0.03])
+gps = Data.Ygps#Data.latlonToMeter(Data.Ygps)
+gpsy = gps[:,0].reshape(-1,1) #lat
+gpsx = gps[:,1].reshape(-1,1) #lon
+#==============================================================================
+# s = 90000
+# l = 60
+# noise=9
+#==============================================================================
+s=0.1
+l=10
+noise=0.0001
+sdata2 = Slider(axdata2, 'number of data points', valmin=1, valmax=len(gpsx), valinit=len(gpsx), valfmt='%0.0f')
+ssigma2 = Slider(axsigma2, 'sigma', valmin=0.01, valmax=10, valinit=s, valfmt='%0.3f')
+slength2 = Slider(axlength2, 'length scale', valmin=1, valmax=100.0, valinit=l, valfmt='%0.4f')
+snoise2 = Slider(axnoise2, 'noise', valmin=0.000001, valmax=0.0001, valinit=noise, valfmt='%0.5f')
+#plot_gp(Data.Xgps, gpsy, len(gpsx), s, l, noise, ax)
+plot_gp2(Data.Xgps, gps, len(gpsx), s, l, noise, ax2)
+def update2(val):
+    ndata = int(round(sdata2.val))
+    s = ssigma2.val
+    l = slength2.val
+    noise = snoise2.val
+    ax.clear() #workaround becaue I could not update the "fill" part
+    #plot_gp(Data.Xgps, gpsy, ndata, s, l, noise, ax)
+    plot_gp2(Data.Xgps, gps, ndata, s, l, noise, ax2)
+    fig2.canvas.draw_idle()
+sdata2.on_changed(update2)
+ssigma2.on_changed(update2)
+slength2.on_changed(update2)
+snoise2.on_changed(update2)
 
 """
 aufloesungGauss = 5

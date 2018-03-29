@@ -12,6 +12,7 @@ http://www.michaelkeutel.de/blog/rotation-matrices-vector-basis/
 #from math import cos
 #from math import sqrt
 from mpl_toolkits.mplot3d import proj3d #wird benutzt! Warnung ignorieren
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -55,6 +56,7 @@ Yacc[:,FORWARD] = -tmp[:,2] #danach: Yacc[:,1] = beschleunigung nach vorn
 #vorher: android y (Yacc[:,1] = nach links beschleunigen)
 LEFT = 2
 Yacc[:,LEFT] = tmp[:,1] #danach: Yacc[:,2] = beschleunigung nach links
+#Yacc[:,LEFT] = np.zeros(Yacc[:,LEFT].shape)
 
 """return true if v > 1 km/h or any speed given"""
 def isMoving(deltaXPosition, deltaYPosition, deltaTime, fasterThankmh=1.0):
@@ -258,8 +260,8 @@ if __name__ == "__main__":
     N = 0.01
     xCircle = np.array(range(int(100*10**N)))/float(10**N)
     yCircle = np.array([[i, 0.0, centripetal] for i in xCircle])
-    fig, ax = plt.subplots()
-    fig.subplots_adjust(bottom=0.2)
+    fig, ax = plt.subplots(figsize=(5,5))
+    fig.subplots_adjust(bottom=0.15)
     #plt.plot(yCircle[:,0], yCircle[:,1])
     x, y, vx, vy = velocity_verlet_integration(xCircle, yCircle, 1.0, 0.0)
     line1, = plt.plot(x, y, "--", label='position with "velocity verlet" integration')
@@ -268,16 +270,16 @@ if __name__ == "__main__":
     x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)
     line3, = plt.plot(x, y, "-", label='position with my integration')
     test, = plt.plot(vx, vy, label='velocity')
-    axis1 = plt.axes([0.25, 0.01, 0.65, 0.03], facecolor='lightgoldenrodyellow')
-    axis2 = plt.axes([0.25, 0.07, 0.65, 0.03], facecolor='green', label='resolution')
+    axis1 = plt.axes([0.28, 0.01, 0.58, 0.03], facecolor='lightgoldenrodyellow')
+    axis2 = plt.axes([0.28, 0.05, 0.58, 0.03], facecolor='green', label='resolution')
     slider1 = Slider(axis1, 'centripetal force', valmin=-1.0, valmax=1.0, valinit=centripetal, valfmt='%0.3f')
     slider2 = Slider(axis2, 'resolution', valmin=0.01, valmax=2.0, valinit=N, valfmt='%0.5f')
-    slider2.valtext.set_text(10**N)
+    slider2.valtext.set_text(round((10**N)*100.0)/100.0)
     def update(val):
         centripetal = slider1.val
         N = slider2.val
         xCircle = np.array(range(int(100*10**N)))/float(10**N)
-        slider2.valtext.set_text(10**N)
+        slider2.valtext.set_text(round((10**N)*100.0)/100.0)
         yCircle = np.array([[i, 0.0, centripetal] for i in xCircle])
         x, y, vx, vy = velocity_verlet_integration(xCircle, yCircle, 1.0, 0.0)
         line1.set_xdata(x)
@@ -297,11 +299,13 @@ if __name__ == "__main__":
     plt.show()
 
     """test integration of real acceleration data vs GPS"""
-    fig = plt.figure()
+    fig = plt.figure(figsize=(7.,7.))
     ax = fig.add_subplot(111, projection='3d')
     plotIntegration(Yacc, fig, ax)
-    fig.legend()
-    fig.tight_layout()
+    fig.legend(loc='lower left', fontsize='small')
+    #ax.get_proj = lambda: np.dot(Axes3D.get_proj(ax), np.diag([0.8, 1, 1, 1]))
+    fig.subplots_adjust(top=1.1, right=1.1)
+    #fig.tight_layout()
     fig.show()
     
     """test coordinates"""

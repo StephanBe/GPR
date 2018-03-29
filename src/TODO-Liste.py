@@ -7,6 +7,8 @@ Created on Thu Jan 25 13:14:50 2018
 
 
 """
+scipy.integrate.ode anschauen für Integration
+
 In "Plot Multivariate Gaussian.py":
     sigma_star = np.diagonal(sigma_star).reshape(-1,1)
 Ist das richtig? Die Formeln aus den Quellen nehmen für sigma_star (oder
@@ -19,7 +21,7 @@ Length-Scale im RBF-Kernel ist, wie stark die Korrelation je Zeitschritt
 bleibt (klein -> kaum Korrelation je weiter weg, groß -> stärkere Korrelation).
 
 Constant-Kernel bestimmt glaube das sigma, also eventuell maximale Änderung
-je Zeitschritt? (Vollbremsung, Unfall, Beschleunigung << Assymetrisch)
+je Zeitschritt? (Vollbremsung, Unfall, Beschleunigung << Assymetrisch?!)
 
 Beschleunigung aufintegrieren und Ort plotten (vs. GPS)
 

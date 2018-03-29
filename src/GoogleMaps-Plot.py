@@ -29,11 +29,11 @@ x = numpy.atleast_2d(numpy.linspace(min(Xgps), max(Xgps), 1000)).T
 #   of two points influencing each other (correlation).
 #ConstantKernel defines a constant.
 #DotProduct is a linear kernel with a noise level parameter.
-kernel = RBF(10, (1, 50)) *\
-         ConstantKernel(0.001, (0.0001, 0.1)) +\
-         WhiteKernel(0.001, (0.0001, 0.1)) +\
-         ConstantKernel(0.01, (0.0001, 0.01)) *\
-         DotProduct(0.001, (0.001, 0.01))
+kernel = RBF(60, (1, 1000)) *\
+         ConstantKernel(90000, (1000, 100000)) +\
+         WhiteKernel(9, (0.11, 100))# +\
+         #ConstantKernel(1, (1, 10000)) *\
+         #DotProduct(0, (0, 180))
 #noise = 0.0001
 gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=3, normalize_y=True)
 gp.fit(Xgps, Ygps)

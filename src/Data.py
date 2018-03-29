@@ -20,7 +20,7 @@ else:
     vufo_data = '../data/Erprobung/Fahrsicherheitstraining/Ausweichen Touran'
 
 """liest VUFO-CSV-Daten ein"""
-def read(filename):
+def read(filename, normalizeTime):
     Y = []
     X = []
     with open(filename) as file:
@@ -30,7 +30,8 @@ def read(filename):
             Y.append([float(x.replace(',', '.')) for x in row[2:]])
     #X = numpy.asarray(X)
     """Normierung auf den Start und Konvertierung in Sekunden"""
-    X = numpy.atleast_2d([(x-min(X)).total_seconds() for x in X]).T
+    if normalizeTime:
+        X = numpy.atleast_2d([(x-min(X)).total_seconds() for x in X]).T
     Y = numpy.asarray(Y)
     return [X, Y]
 
@@ -62,16 +63,24 @@ def normalizeAcc(Yacc):
           for Y in Yacc]
     return  numpy.asarray(y)
 
+
+#normalisieren der zeit entfernen
 """springe in das gegebene Verzeichnis"""
 prevdir=os.getcwd()
 os.chdir(vufo_data)
 """Beschleunigung einlesen"""
-Xacc, Yacc = read('AccelData.txt')
+Xacc, Yacc = read('AccelData.txt', False)
 """GPS-Daten einlesen"""
-Xgps, Ygps = read('GPSData.txt')
+Xgps, Ygps = read('GPSData.txt', False)
 """Gyro-Daten einlesen"""
-Xgyr, Ygyr = read('GyroData.txt')
+Xgyr, Ygyr = read('GyroData.txt', False)
 os.chdir(prevdir)
+
+"""Normalisiere Zeit"""
+minx = min([min(Xacc), min(Xgps), min(Xgyr)])
+Xacc = numpy.atleast_2d([(x-minx).total_seconds() for x in Xacc]).T
+Xgps = numpy.atleast_2d([(x-minx).total_seconds() for x in Xgps]).T
+Xgyr = numpy.atleast_2d([(x-minx).total_seconds() for x in Xgyr]).T
 
 """Korrigiere Zeitstempelfehler"""
 Xacc_corrected = numpy.copy(Xacc)
@@ -98,6 +107,17 @@ while i < len(Xacc)-1:
             Xacc_corrected2[k] = Xacc[i] + (k - i) * stepWidth
         i = j
     i += 1
+    
+"""Justiere Beschleunigungsdaten"""
+#Getestet mit VUFO: Erprobung/Fahrsicherheitstraining/Ausweichen Touran
+#
+#print(numpy.mean(Yacc[1:120,:], axis=0))
+#[ 9.88905903 -0.11588741 -0.19282377]
+#print(numpy.median(Yacc[1:120,:], axis=0))
+#[ 9.921572  -0.1340753 -0.2106898]
+Yacc[:,0] = Yacc[:,0]+(9.81-9.88905903)
+Yacc[:,1] = Yacc[:,1]+(0.11588741)
+Yacc[:,2] = Yacc[:,2]+(0.19282377)
 
 
 if __name__ == "__main__":
