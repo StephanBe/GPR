@@ -32,6 +32,7 @@ def linear_kernel(x1, x2, s1=0, s2=1, c=0):
 def kernel(a, b, s=1, l=1):
     return sqared_exponential_kernel(a, b, s, l) + linear_kernel(a, b)
 
+#plots samples drawn from the prior defined by an RBF kernel
 def plot_gp_prio_samples(s=5, l=0.1):
     Xtest = np.linspace(-5, 5, n).reshape(-1, 1)
     K_ = sqared_exponential_kernel(Xtest, Xtest, s, l)

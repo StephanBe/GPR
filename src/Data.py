@@ -10,12 +10,14 @@ import csv
 from datetime import datetime
 import os
 from matplotlib import pyplot
-from math import cos
+from math import cos, pi
+from scipy import integrate
 import platform
 
 
 if platform.system() == 'Windows':
-    vufo_data = 'data\\Erprobung\\Fahrsicherheitstraining\\Ausweichen Touran'
+    vufo_data = '..\\data\\Sondersignal\\Kritisch\\City\\20130421_142927_Bremsen'
+    #vufo_data = '..\\data\\Erprobung\\Fahrsicherheitstraining\\Ausweichen Touran'
 else:
     vufo_data = '../data/Erprobung/Fahrsicherheitstraining/Ausweichen Touran'
 
@@ -115,26 +117,39 @@ while i < len(Xacc)-1:
 #[ 9.88905903 -0.11588741 -0.19282377]
 #print(numpy.median(Yacc[1:120,:], axis=0))
 #[ 9.921572  -0.1340753 -0.2106898]
-diff = [-9.81+9.88905903, -0.11588741, -0.19282377]
-#diff = numpy.sum(numpy.cumsum(Yacc[0:120,:], axis=0), axis=0)/120/120
-Yacc[:,0] = Yacc[:,0]-diff[0]
-Yacc[:,1] = Yacc[:,1]-diff[1]
-Yacc[:,2] = Yacc[:,2]-diff[2]
+#print(numpy.mean(Ygyr[0:120,:], axis=0))
+#[ 0.002586   -0.00454077 -0.00711658]
+diffAcc = [-9.81+9.88905903, -0.11588741, -0.19282377]
+# =============================================================================
+# diffGyr = [      0.00258600, -0.00454077, -0.00711658]
+# =============================================================================
+Yacc[:,0] = Yacc[:,0]-diffAcc[0]
+Yacc[:,1] = Yacc[:,1]-diffAcc[1]
+Yacc[:,2] = Yacc[:,2]-diffAcc[2]
+# =============================================================================
+# Ygyr[:,0] = Ygyr[:,0]-diffGyr[0]
+# Ygyr[:,1] = Ygyr[:,1]-diffGyr[1]
+# Ygyr[:,2] = Ygyr[:,2]-diffGyr[2]
+# =============================================================================
+
 print()
-print("THE ACCELERATION VALUES ARE REDUCED BY "+
-      str(diff)+
-      " TO")
-print("CALIBRATE THEM LANDING ON 0 MOVEMENT AFTER 120 ENTRIES FROM DATA SET")
+print("THE ACCELERATION VALUES ARE REDUCED BY " + str(diffAcc)+
+      " AND ANGULAR VELOCITY BY "+ #str(diffGyr) +
+      " TO "+
+      "CALIBRATE THEM LANDING ON 0 MOVEMENT AFTER 120 ENTRIES FROM DATA SET")
 print("VUFO/Erprobung/Fahrsicherheitstraining/Ausweichen Touran")
 print("THIS SHOULD BE DONE PROPERLY INSTEAD IN A PRODUCTIVE VERSION!")
 print()
 
+"""Plots zu den gewählten Daten und dem Zeitstempelproblem"""
 if __name__ == "__main__":
     pyplot.figure()
     pyplot.subplot(231)
     pyplot.plot(Xacc, label="original")
-    pyplot.plot(Xacc_corrected2, "--", label="corrected by evenly distributing time")
-    pyplot.plot(Xacc_corrected, "--", label="corrected by keeping a normal time frame")
+    pyplot.plot(Xacc_corrected2, "--",
+                label="corrected by evenly distributing time")
+    pyplot.plot(Xacc_corrected, "--",
+                label="corrected by keeping a normal time frame")
     pyplot.title("Time Stamp\nOf Each Data Entry")
     pyplot.xlabel("$i$th entry")
     pyplot.ylabel("$t$ in $s$")
@@ -144,8 +159,10 @@ if __name__ == "__main__":
     
     pyplot.subplot(232)
     pyplot.plot(Xacc[1:] - Xacc[:-1], label="original")
-    pyplot.plot(Xacc_corrected2[1:] - Xacc_corrected2[:-1], "--", label="corrected by evenly distributing time")
-    pyplot.plot(Xacc_corrected[1:] - Xacc_corrected[:-1], "--", label="corrected by keeping a normal time frame")
+    pyplot.plot(Xacc_corrected2[1:] - Xacc_corrected2[:-1], "--",
+                label="corrected by evenly distributing time")
+    pyplot.plot(Xacc_corrected[1:] - Xacc_corrected[:-1], "--",
+                label="corrected by keeping a normal time frame")
     pyplot.title("Time Elapsed\nBetween Two Following Entries")
     pyplot.xlabel("$i$th entry")
     pyplot.ylabel("$t_{i+1}-t_{i}$ in $s$")
@@ -158,8 +175,10 @@ if __name__ == "__main__":
     medianDelta = [Xacc[0]+i*numpy.median(delta) for i in range(0,len(Xacc))]
     meanDelta = [Xacc[0]+i*numpy.mean(delta) for i in range(0,len(Xacc))]
     pyplot.plot(Xacc-medianDelta, label="original")
-    pyplot.plot(Xacc_corrected2-medianDelta, "--", label="corrected by evenly distributing time")
-    pyplot.plot(Xacc_corrected-medianDelta, "--", label="corrected by keeping a normal time frame")
+    pyplot.plot(Xacc_corrected2-medianDelta, "--",
+                label="corrected by evenly distributing time")
+    pyplot.plot(Xacc_corrected-medianDelta, "--",
+                label="corrected by keeping a normal time frame")
     pyplot.xlabel("$i$th entry")
     pyplot.ylabel("$t_{measured}-t_{artificial}$ in s")
     #pyplot.plot(medianDelta, label="median delta")
@@ -172,29 +191,62 @@ if __name__ == "__main__":
     pyplot.subplot(212)
     pyplot.title("Car Acceleration to the left")
     pyplot.plot(Xacc, Yacc[:,1], label="original")
-    pyplot.plot(Xacc_corrected2, Yacc[:,1], "--", label="corrected by evenly distributing time")
-    pyplot.plot(Xacc_corrected, Yacc[:,1], "--", label="corrected by keeping a normal time frame")
+    pyplot.plot(Xacc_corrected2, Yacc[:,1], "--",
+                label="corrected by evenly distributing time")
+    pyplot.plot(Xacc_corrected, Yacc[:,1], "--",
+                label="corrected by keeping a normal time frame")
     pyplot.xlabel("$t$ in $s$")
     pyplot.ylabel("$a$ in $m*s^{-1}$")
     pyplot.legend()
     pyplot.show()
     
     pyplot.figure()
-    pyplot.subplot(121)
+    pyplot.subplot(111)
     pyplot.title("Car Position")
     g = latlonToMeter(Ygps)
     cb = pyplot.scatter(g[:,1], g[:,0], c=Xgps.flatten())
     pyplot.colorbar(cb, label="$t$ in $s$")
     pyplot.xlabel("longitude in $m$")
     pyplot.ylabel("latitude in $m$")
-    pyplot.subplot(122)
-    pyplot.title("Car Acceleration")
-    pyplot.plot(Xacc, Yacc[:,0], label="$a_{down}$")
-    pyplot.plot(Xacc, Yacc[:,1], label="$a_{left}$")
-    pyplot.plot(Xacc, Yacc[:,2], label="$a_{back}$")
-    pyplot.xlabel("$t$ in $s$")
-    pyplot.ylabel("$a$ in $m*s^{-1}$")
     pyplot.legend()
     pyplot.tight_layout()
     pyplot.show()
+    
+    pyplot.figure()
+    pyplot.subplot(121)
+    pyplot.title("Accelerometer")
+    pyplot.plot(Xacc, Yacc[:,0], label="$down$")
+    pyplot.plot(Xacc, Yacc[:,1], label="$left$")
+    pyplot.plot(Xacc, Yacc[:,2], label="$back$")
+    pyplot.xlabel("$t$ in $s$")
+    pyplot.ylabel("$a$ in $m*s^{-1}$")
+    pyplot.legend()
+    pyplot.subplot(122)
+    pyplot.title("Gyroscope")
+    pyplot.plot(Xgyr, Ygyr[:,0], label="$direction$")
+    pyplot.plot(Xgyr, Ygyr[:,1], label="$pitch$")
+    pyplot.plot(Xgyr, Ygyr[:,2], label="$roll$")
+    pyplot.xlabel("$t$ in $s$")
+    pyplot.ylabel("$\omega$ in $rad*s^{-1}$")
+    pyplot.legend()
+    pyplot.tight_layout()
+    pyplot.show()
+    
+    pyplot.figure()
+    pyplot.subplot(111)
+    pyplot.title("Angle (Integrated Angular Velocity)")
+    intgyr = numpy.zeros(Ygyr.shape)
+    intgyr[:,0] = integrate.cumtrapz(Ygyr[:,0], x=Xgyr[:,0], initial=0.0) * 180.0 / pi
+    intgyr[:,1] = integrate.cumtrapz(Ygyr[:,1], x=Xgyr[:,0], initial=0.0) * 180.0 / pi
+    intgyr[:,2] = integrate.cumtrapz(Ygyr[:,2], x=Xgyr[:,0], initial=0.0) * 180.0 / pi
+    pyplot.plot(Xgyr, intgyr[:,0], label="$direction$")
+    pyplot.plot(Xgyr, intgyr[:,1], label="$pitch$")
+    pyplot.plot(Xgyr, intgyr[:,2], label="$roll$")
+    pyplot.xlabel("$t$ in $s$")
+    pyplot.ylabel("$\psi$ in $°$")
+    pyplot.legend()
+    pyplot.tight_layout()
+    pyplot.show()
+    
+    
     

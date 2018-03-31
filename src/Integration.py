@@ -19,7 +19,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, DotProduct
 from scipy import integrate
 from matplotlib.widgets import Slider
-from math import sqrt
+from math import sqrt, pi, atan2
 
 import Data
 from vectorRotation import rotate
@@ -122,25 +122,28 @@ def my_integration(t, Yacc, vx_0=0, vy_0=0, forward=np.array([1.0, 0.0])):
     y = np.zeros(len(t))
     vx[0] = vx_0
     vy[0] = vy_0
+    tmp = forward
+    forward = np.zeros((len(t), 2))
+    forward[0,:] = tmp
     #first iteration
     dt = Xacc[1]-Xacc[0]
-    a = rotate(Yacc[0,1:], forward)
+    a = rotate(Yacc[0,1:], forward[0,:])
     x[1] = vx[0]*dt + 1.0/2.0*a[0]*dt*dt
     y[1] = vy[0]*dt + 1.0/2.0*a[1]*dt*dt
     if isMoving(x[1]-x[0], y[1]-y[0], dt):
-        forward = np.array([x[1]-x[0], y[1]-y[0]])
-    aNext = rotate(Yacc[1,1:], forward)
+        forward[1,:] = np.array([x[1]-x[0], y[1]-y[0]])
+    aNext = rotate(Yacc[1,1:], forward[1,:])
     #Integration durch trapezoidal rule
     vx[1] = vx[0] + dt*(a[0] + aNext[0])/2
     vy[1] = vy[0] + dt*(a[1] + aNext[1])/2
     for i in range(1, len(t)-1):
         dt = t[i+1]-t[i]
-        a = rotate(Yacc[i,1:], forward)
+        a = rotate(Yacc[i,1:], forward[i,:])
         x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
         y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
         if isMoving(x[i+1]-x[i], y[i+1]-y[i], dt):
-            forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
-        aNext = rotate(Yacc[i+1,1:], forward)
+            forward[i+1,:] = np.array([x[i+1]-x[i], y[i+1]-y[i]])
+        aNext = rotate(Yacc[i+1,1:], forward[i+1,:])
         #Integration durch trapezoidal rule
         vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
         vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
@@ -150,21 +153,23 @@ def my_integration(t, Yacc, vx_0=0, vy_0=0, forward=np.array([1.0, 0.0])):
             #zentrale differenz für eine bessere Richtungsschätzung
             tb = t[i]   - t[i-1]
             ta = t[i+1] - t[i] # = dt
-            forward[0] = 1.0/(tb+ta)*(tb/ta*x[i+1] + (ta**2 - tb**2)/(ta*tb)*x[i] - ta/tb*x[i-1])
-            forward[1] = 1.0/(tb+ta)*(tb/ta*y[i+1] + (ta**2 - tb**2)/(ta*tb)*y[i] - ta/tb*y[i-1])
+            forward[i,0] = 1.0/(tb+ta)*\
+                (tb/ta*x[i+1] + (ta**2 - tb**2)/(ta*tb)*x[i] - ta/tb*x[i-1])
+            forward[i,1] = 1.0/(tb+ta)*\
+                (tb/ta*y[i+1] + (ta**2 - tb**2)/(ta*tb)*y[i] - ta/tb*y[i-1])
             #korrigiere den Schritt mit der besseren Richtungsschätzung
-            a = rotate(Yacc[i,1:], forward)
+            a = rotate(Yacc[i,1:], forward[i,:])
             x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
             y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
             #korrigiere die nächste Beschleunigung mit dem besseren Schritt
-            forward = np.array([x[i+1]-x[i], y[i+1]-y[i]])
-            aNext = rotate(Yacc[i+1,1:], forward)
+            forward[i+1,:] = np.array([x[i+1]-x[i], y[i+1]-y[i]])
+            aNext = rotate(Yacc[i+1,1:], forward[i+1,:])
             #Integration durch trapezoidal rule
             vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
             vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
         
         
-    return x, y, vx, vy
+    return x, y, vx, vy, forward
 
 def accToPos(Xacc, Yacc, vx_0=0, vy_0=0, forward=np.array([1.0, 0.0])):
     return my_integration(Xacc, Yacc, vx_0, vy_0, forward)
@@ -272,7 +277,7 @@ if __name__ == "__main__":
     line1, = plt.plot(x, y, "--", label='position with "velocity verlet" integration')
     x, y, vx, vy = verlet_integration(xCircle, yCircle, 1.0, 0.0)
     line2, = plt.plot(x, y, "--", label='position with "verlet" integration')
-    x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)
+    x, y, vx, vy, forward = my_integration(xCircle, yCircle, 1.0, 0.0)
     line3, = plt.plot(x, y, "-", label='position with my integration')
     test, = plt.plot(vx, vy, label='velocity')
     axis1 = plt.axes([0.28, 0.01, 0.58, 0.03], facecolor='lightgoldenrodyellow')
@@ -292,7 +297,7 @@ if __name__ == "__main__":
         x, y, vx, vy = verlet_integration(xCircle, yCircle, 1.0, 0.0)
         line2.set_xdata(x)
         line2.set_ydata(y)
-        x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)
+        x, y, vx, vy = my_integration(xCircle, yCircle, 1.0, 0.0)[0:4]
         line3.set_xdata(x)
         line3.set_ydata(y)
         test.set_xdata(vx)
@@ -302,7 +307,14 @@ if __name__ == "__main__":
     slider1.on_changed(update)
     slider2.on_changed(update)
     plt.show()
-
+    #plot angle over iteration
+    plt.figure()
+    plt.title("angle of the circular movement (from integrating accel.)")
+    plt.plot([180 / pi * atan2(forward[i, 0], forward[i, 1])
+        for i in range(len(forward))])
+    plt.ylabel("angle in °")
+    plt.show()
+    
     """test integration of real acceleration data vs GPS"""
     fig = plt.figure(figsize=(7.,7.))
     ax = fig.add_subplot(111, projection='3d')
@@ -312,6 +324,7 @@ if __name__ == "__main__":
     fig.subplots_adjust(top=1.1, right=1.1)
     #fig.tight_layout()
     fig.show()
+    
     
     """test coordinates"""
     def plotCoordinateShuffle():
