@@ -18,11 +18,11 @@ import Data
 def gpr(x, y, x_pred):
     mindt = np.min((x[1:]-x[:-1]))
     maxdt = np.max((x[1:]-x[:-1]))
-    minY = min(np.min(abs(y), axis=0))
-    maxY = max(np.max(abs(y), axis=0))
-    avg = (maxY-minY)/(maxdt-mindt)
-    kernel = ConstantKernel(avg, (minY/maxdt, maxY/mindt)) *\
-             RBF(avg, (minY/maxdt, maxY/mindt))
+    minY = min(np.min(y, axis=0))
+    maxY = max(np.max(y, axis=0))
+    avgY = np.average(np.average(y, axis=0))
+    kernel = ConstantKernel(avgY**2, (minY**2, maxY**2)) *\
+             RBF(2.5*(maxdt-mindt), (1.0*mindt, 10.0*maxdt))
     gp = GaussianProcessRegressor(kernel, normalize_y=True)
     gp.fit(x, y)
     return gp.predict(np.array(x_pred).reshape(-1, 1), return_std=True)
