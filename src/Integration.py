@@ -74,27 +74,29 @@ def isMoving(deltaXPosition, deltaYPosition, deltaTime, fasterThankmh=1.0):
     speed = float(fasterThankmh)
     return((x*x + y*y) / (t*t) > 0.077160*speed*speed)
 
-def get_rotation(time, acceleration, initial_velocity):
-    velocity = np.zeros(acceleration.shape)
-    velocity[0,:] = initial_velocity
-    for i in range(len(acceleration)-1):
-        f  = velocity[i,:]
-        a  = acceleration[i,:]
-        v  = velocity[i,:] 
-        dt = time[i+1] - time[i]
-        change = 1.
-        for it in range(100):
-            if change < 1e-6:
-                break
-            before = f
-            R = np.array([[f[0], -f[1]],
-                          [f[1],  f[0]]]) * 1 / sqrt(f.T @ f)
-            f = R @ a * dt + v
-            change = np.sum(np.abs(before - f))
-            print(f)
-            #print("current change "+str(change))
-        velocity[i+1,:] = f
-    return velocity
+# =============================================================================
+# def get_rotation(time, acceleration, initial_velocity):
+#     velocity = np.zeros(acceleration.shape)
+#     velocity[0,:] = initial_velocity
+#     for i in range(len(acceleration)-1):
+#         f  = velocity[i,:]
+#         a  = acceleration[i,:]
+#         v  = velocity[i,:] 
+#         dt = time[i+1] - time[i]
+#         change = 1.
+#         for it in range(1):
+#             if change < 1e-6:
+#                 break
+#             before = f
+#             R = np.array([[f[0], -f[1]],
+#                           [f[1],  f[0]]]) * 1 / sqrt(f.T @ f)
+#             f = R @ a * dt + v
+#             change = np.sum(np.abs(before - f))
+#             print(f)
+#             #print("current change "+str(change))
+#         velocity[i+1,:] = f
+#     return velocity
+# =============================================================================
 
 
 #https://en.wikipedia.org/wiki/Verlet_integration
@@ -314,14 +316,14 @@ if __name__ == "__main__":
     line2, = plt.plot(xvi, yvi, "--", label='position with "verlet" integration')
     x, y, vx, vy, forward = my_integration(xCircle, yCircle, 0., 0., 1., 0.)
     line3, = plt.plot(x, y, "-", label='position with my integration')
-    v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
+    #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
     xri = np.zeros(len(xCircle))
     yri = np.zeros(len(xCircle))
     for i in range(len(xCircle)):
         #a = rotate(yCircle[i,1:], forward[i,:])
-        #forw = np.array([vx[i], vy[i]])
-        #a = rotate(yCircle[i,1:], forw)
-        a = rotate(yCircle[i,1:], v[i,:])
+        forw = np.array([vx[i], vy[i]])
+        a = rotate(yCircle[i,1:], forw)
+        #a = rotate(yCircle[i,1:], v[i,:])
         xri[i] = a[0]
         yri[i] = a[1]
     xri = integrate.cumtrapz(integrate.cumtrapz(xri, xCircle, initial=1.), xCircle, initial=0.)
@@ -350,14 +352,14 @@ if __name__ == "__main__":
         line3.set_ydata(y)
         test.set_xdata(vx)
         test.set_ydata(vy)
-        v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
+        #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
         xri = np.zeros(len(xCircle))
         yri = np.zeros(len(xCircle))
         for i in range(len(xCircle)):
             #a = rotate(yCircle[i,1:], forward[i,:])
-            #forw = np.array([vx[i], vy[i]])
-            #a = rotate(yCircle[i,1:], forw)
-            a = rotate(yCircle[i,1:], v[i,:])
+            forw = np.array([vx[i], vy[i]])
+            a = rotate(yCircle[i,1:], forw)
+            #a = rotate(yCircle[i,1:], v[i,:])
             xri[i] = a[0]
             yri[i] = a[1]
         xri = integrate.cumtrapz(integrate.cumtrapz(xri, xCircle, initial=1.), xCircle, initial=0.)
