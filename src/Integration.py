@@ -146,7 +146,8 @@ def velocity_verlet_integration(Xacc, Yacc, x0=0., y0=0., vx_0=0, vy_0=0, forwar
     return x, y, vx, vy
 
 #my integration
-def my_integration(t, Yacc, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.0, 0.0])):
+def my_integration(t, Yacc, x0=0., y0=0., vx_0=0., vy_0=0.,
+                   forward=np.array([1.0, 0.0]), return_rotated_acceleration=False):
     vx = np.zeros(len(t))
     vy = np.zeros(len(t))
     x = np.zeros(len(t))
@@ -160,26 +161,27 @@ def my_integration(t, Yacc, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.
     forward[0:,:] = tmp
     #first iteration
     dt = Xacc[1]-Xacc[0]
-    a = rotate(Yacc[0,1:], forward[0,:])
-    x[1] = x[0] + vx[0]*dt + 1.0/2.0*a[0]*dt*dt
-    y[1] = y[0] + vy[0]*dt + 1.0/2.0*a[1]*dt*dt
+    a = np.zeros((len(t), 2))
+    a[0,:] = rotate(Yacc[0,1:], forward[0,:])
+    x[1] = x[0] + vx[0]*dt + 1.0/2.0*a[0,0]*dt*dt
+    y[1] = y[0] + vy[0]*dt + 1.0/2.0*a[0,1]*dt*dt
     if isMoving(x[1]-x[0], y[1]-y[0], dt):
         forward[1:,:] = np.array([x[1]-x[0], y[1]-y[0]])
     aNext = rotate(Yacc[1,1:], forward[1,:])
     #Integration durch trapezoidal rule
-    vx[1] = vx[0] + dt*(a[0] + aNext[0])/2
-    vy[1] = vy[0] + dt*(a[1] + aNext[1])/2
+    vx[1] = vx[0] + dt*(a[0,0] + aNext[0])/2
+    vy[1] = vy[0] + dt*(a[0,1] + aNext[1])/2
     for i in range(1, len(t)-1):
         dt = t[i+1]-t[i]
-        a = rotate(Yacc[i,1:], forward[i,:])
-        x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
-        y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
+        a[i,:] = rotate(Yacc[i,1:], forward[i,:])
+        x[i+1] = x[i] + vx[i]*dt + 1/2*a[i,0]*dt*dt
+        y[i+1] = y[i] + vy[i]*dt + 1/2*a[i,1]*dt*dt
         if isMoving(x[i+1]-x[i], y[i+1]-y[i], dt):
             forward[(i+1):,:] = np.array([x[i+1]-x[i], y[i+1]-y[i]])
         aNext = rotate(Yacc[i+1,1:], forward[i+1,:])
         #Integration durch trapezoidal rule
-        vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
-        vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
+        vx[i+1] = vx[i] + dt*(a[i,0] + aNext[0])/2
+        vy[i+1] = vy[i] + dt*(a[i,1] + aNext[1])/2
         
         if isMoving(x[i+1]-x[i], y[i+1]-y[i], dt) \
                 and isMoving(x[i]-x[i-1], y[i]-y[i-1], t[i]-t[i-1]):
@@ -191,18 +193,58 @@ def my_integration(t, Yacc, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.
             forward[i:,1] = 1.0/(tb+ta)*\
                 (tb/ta*y[i+1] + (ta**2 - tb**2)/(ta*tb)*y[i] - ta/tb*y[i-1])
             #korrigiere den Schritt mit der besseren Richtungsschätzung
-            a = rotate(Yacc[i,1:], forward[i,:])
-            x[i+1] = x[i] + vx[i]*dt + 1/2*a[0]*dt*dt
-            y[i+1] = y[i] + vy[i]*dt + 1/2*a[1]*dt*dt
+            a[i,:] = rotate(Yacc[i,1:], forward[i,:])
+            x[i+1] = x[i] + vx[i]*dt + 1/2*a[i,0]*dt*dt
+            y[i+1] = y[i] + vy[i]*dt + 1/2*a[i,1]*dt*dt
             #korrigiere die nächste Beschleunigung mit dem besseren Schritt
             forward[(i+1):,:] = np.array([x[i+1]-x[i], y[i+1]-y[i]])
             aNext = rotate(Yacc[i+1,1:], forward[i+1,:])
             #Integration durch trapezoidal rule
-            vx[i+1] = vx[i] + dt*(a[0] + aNext[0])/2
-            vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
+            vx[i+1] = vx[i] + dt*(a[i,0] + aNext[0])/2
+            vy[i+1] = vy[i] + dt*(a[i,1] + aNext[1])/2
         
-        
-    return x, y, vx, vy, forward
+    if return_rotated_acceleration:
+        return x, y, vx, vy, forward, a
+    else:
+        return x, y, vx, vy, forward
+
+def rotatedIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.,0.]), return_velocity=False):
+    x, y, vx, vy, forward, a = my_integration(t, a, 0., 0., 1., 0., forward, True)
+    v0 = np.repeat([[vx_0, vy_0]], len(t), axis=0) #rotated starting velocity
+# =============================================================================
+#     for i in range(len(t)):
+#         v0[i,:] = rotate(v0[i,:], forward[i,:])
+# =============================================================================
+    xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=0.)+v0[:,0], t, initial=x0)
+    yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=0.)+v0[:,1], t, initial=y0)
+# =============================================================================
+#     xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=vx_0), t, initial=x0)
+#     yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=vy_0), t, initial=y0)
+# =============================================================================
+    if return_velocity:
+        return xri, yri, vx, vy
+    else:
+        return xri, yri
+# =============================================================================
+#     #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
+#     xri = np.zeros(len(t))
+#     yri = np.zeros(len(t))
+#     v0 = np.repeat([[vx_0, vy_0]], len(t), axis=0) #rotated starting velocity
+#     for i in range(len(t)):
+#         #a = rotate(yCircle[i,1:], forward[i,:])
+#         forw = np.array([vx[i], vy[i]])
+#         rotated_a = rotate(a[i,1:], forw)
+#         v0[i,:] = rotate(v0[i,:], forw)
+#         #a = rotate(yCircle[i,1:], v[i,:])
+#         xri[i] = rotated_a[0]
+#         yri[i] = rotated_a[1]
+#     xri = integrate.cumtrapz(integrate.cumtrapz(xri, t, initial=0.)+v0[:,0], t, initial=x0)
+#     yri = integrate.cumtrapz(integrate.cumtrapz(yri, t, initial=0.)+v0[:,1], t, initial=y0)
+#     if return_velocity:
+#         return xri, yri, vx, vy
+#     else:
+#         return xri, yri
+# =============================================================================
 
 def accToPos(Xacc, Yacc, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.0, 0.0])):
     return my_integration(Xacc, Yacc, x0, y0, vx_0, vy_0, forward)
@@ -317,17 +359,7 @@ if __name__ == "__main__":
     x, y, vx, vy, forward = my_integration(xCircle, yCircle, 0., 0., 1., 0.)
     line3, = plt.plot(x, y, "-", label='position with my integration')
     #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
-    xri = np.zeros(len(xCircle))
-    yri = np.zeros(len(xCircle))
-    for i in range(len(xCircle)):
-        #a = rotate(yCircle[i,1:], forward[i,:])
-        forw = np.array([vx[i], vy[i]])
-        a = rotate(yCircle[i,1:], forw)
-        #a = rotate(yCircle[i,1:], v[i,:])
-        xri[i] = a[0]
-        yri[i] = a[1]
-    xri = integrate.cumtrapz(integrate.cumtrapz(xri, xCircle, initial=1.), xCircle, initial=0.)
-    yri = integrate.cumtrapz(integrate.cumtrapz(yri, xCircle, initial=0.), xCircle, initial=0.)
+    xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
     line4, = plt.plot(xri, yri, ".-", label='position with simple double integration of rotated a')
     test, = plt.plot(vx, vy, label='velocity')
     axis1 = plt.axes([0.28, 0.01, 0.58, 0.03], facecolor='lightgoldenrodyellow')
@@ -353,17 +385,7 @@ if __name__ == "__main__":
         test.set_xdata(vx)
         test.set_ydata(vy)
         #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
-        xri = np.zeros(len(xCircle))
-        yri = np.zeros(len(xCircle))
-        for i in range(len(xCircle)):
-            #a = rotate(yCircle[i,1:], forward[i,:])
-            forw = np.array([vx[i], vy[i]])
-            a = rotate(yCircle[i,1:], forw)
-            #a = rotate(yCircle[i,1:], v[i,:])
-            xri[i] = a[0]
-            yri[i] = a[1]
-        xri = integrate.cumtrapz(integrate.cumtrapz(xri, xCircle, initial=1.), xCircle, initial=0.)
-        yri = integrate.cumtrapz(integrate.cumtrapz(yri, xCircle, initial=0.), xCircle, initial=0.)
+        xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
         line4.set_xdata(xri)
         line4.set_ydata(yri)
         fig.canvas.draw_idle()
