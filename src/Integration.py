@@ -209,14 +209,14 @@ def my_integration(t, Yacc, x0=0., y0=0., vx_0=0., vy_0=0.,
         return x, y, vx, vy, forward
 
 def rotatedIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.,0.]), return_velocity=False):
-    x, y, vx, vy, forward, a = my_integration(t, a, 0., 0., 1., 0., forward, True)
-    v0 = np.repeat([[vx_0, vy_0]], len(t), axis=0) #rotated starting velocity
-# =============================================================================
-#     for i in range(len(t)):
-#         v0[i,:] = rotate(v0[i,:], forward[i,:])
-# =============================================================================
-    xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=0.)+v0[:,0], t, initial=x0)
-    yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=0.)+v0[:,1], t, initial=y0)
+    x, y, vx, vy = velocity_verlet_integration(t, a, 0., 0., 1., 0., forward)[0:4]
+    ar = np.zeros((len(t), 2)) #rotated starting velocity
+    ar[0,:] = rotate(a[0,1:], forward)
+    for i in range(1,len(t)):
+        #ar[i,:] = rotate(a[i,1:], np.array([vx[i]+vx[i-1],vy[i]+vy[i-1]]))
+        ar[i,:] = rotate(a[i,1:], np.array([vx[i]+vx[i-1],vy[i]+vy[i-1]]))
+    xri = integrate.cumtrapz(integrate.cumtrapz(ar[:,0], t, initial=0.)+vx_0, t, initial=x0)
+    yri = integrate.cumtrapz(integrate.cumtrapz(ar[:,1], t, initial=0.)+vy_0, t, initial=y0)
 # =============================================================================
 #     xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=vx_0), t, initial=x0)
 #     yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=vy_0), t, initial=y0)
@@ -352,16 +352,19 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(5,5))
     fig.subplots_adjust(bottom=0.15)
     #plt.plot(yCircle[:,0], yCircle[:,1])
+    groundtruth, = plt.plot(np.cos(pi*2*np.array(range(101))/100)/centripetal,
+                           (np.sin(pi*2*np.array(range(101))/100)+1)/centripetal,
+                           "--", label='ground truth')
     xvvi, yvvi = velocity_verlet_integration(xCircle, yCircle, 0., 0., 1., 0.)[0:2]
-    line1, = plt.plot(xvvi, yvvi, "--", label='position with "velocity verlet" integration')
+    line1, = plt.plot(xvvi, yvvi, "-", label='position with "velocity verlet" integration')
     xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1., 0.)[0:2]
-    line2, = plt.plot(xvi, yvi, "--", label='position with "verlet" integration')
+    line2, = plt.plot(xvi, yvi, "-", label='position with "verlet" integration')
     x, y, vx, vy, forward = my_integration(xCircle, yCircle, 0., 0., 1., 0.)
     line3, = plt.plot(x, y, "-", label='position with my integration')
     #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
     xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
-    line4, = plt.plot(xri, yri, ".-", label='position with simple double integration of rotated a')
-    test, = plt.plot(vx, vy, label='velocity')
+    line4, = plt.plot(xri, yri, "--", label='position with simple double integration of rotated a')
+    #test, = plt.plot(vx, vy, label='velocity')
     axis1 = plt.axes([0.28, 0.01, 0.58, 0.03], facecolor='lightgoldenrodyellow')
     axis2 = plt.axes([0.28, 0.05, 0.58, 0.03], facecolor='green', label='resolution')
     slider1 = Slider(axis1, 'centripetal force', valmin=-1.0, valmax=1.0, valinit=centripetal, valfmt='%0.3f')
@@ -373,6 +376,9 @@ if __name__ == "__main__":
         xCircle = np.array(range(int(100*10**N)))/float(10**N)
         slider2.valtext.set_text(round((10**N)*100.0)/100.0)
         yCircle = np.array([[i, 0.0, centripetal] for i in xCircle])
+        
+        groundtruth.set_xdata(np.cos(pi*2*np.array(range(101))/100)/centripetal)
+        groundtruth.set_ydata((np.sin(pi*2*np.array(range(101))/100)+1)/centripetal)
         xvvi, yvvi = velocity_verlet_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)[0:2]
         line1.set_xdata(xvvi)
         line1.set_ydata(yvvi)
@@ -382,8 +388,8 @@ if __name__ == "__main__":
         x, y, vx, vy, forward = my_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)
         line3.set_xdata(x)
         line3.set_ydata(y)
-        test.set_xdata(vx)
-        test.set_ydata(vy)
+        #test.set_xdata(vx)
+        #test.set_ydata(vy)
         #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
         xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
         line4.set_xdata(xri)
