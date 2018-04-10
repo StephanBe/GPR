@@ -10,7 +10,7 @@ import csv
 from datetime import datetime
 import os
 from matplotlib import pyplot
-from math import cos, pi
+from math import cos, pi, atan2
 from scipy import integrate
 import platform
 
@@ -238,6 +238,10 @@ if __name__ == "__main__":
     pyplot.plot(Xgyr, intgyr[:,0], label="$direction$")
     pyplot.plot(Xgyr, intgyr[:,1], label="$pitch$")
     pyplot.plot(Xgyr, intgyr[:,2], label="$roll$")
+    pyplot.plot(Xgps[:-1], 
+                [atan2(g[i+1,0]-g[i,0], g[i+1,1]-g[i,1]) * 180.0 / pi
+                     for i in range(len(Xgps)-1)],
+                 "--", label="$direction$ from gps")
     pyplot.xlabel("$t$ in $s$")
     pyplot.ylabel("$\psi$ in $°$")
     pyplot.legend()

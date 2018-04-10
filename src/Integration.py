@@ -58,8 +58,8 @@ LEFT = 2
 Yacc[:,LEFT] = tmp[:,1] #danach: Yacc[:,2] = beschleunigung nach links
 #Yacc[:,LEFT] = np.zeros(Yacc[:,LEFT].shape)
 
-"""return true if v > 1 km/h or any speed given"""
 def isMoving(deltaXPosition, deltaYPosition, deltaTime, fasterThankmh=1.0):
+    """return true if v > 1 km/h or any speed given"""
     x = deltaXPosition
     y = deltaYPosition
     t = deltaTime
@@ -100,19 +100,19 @@ def isMoving(deltaXPosition, deltaYPosition, deltaTime, fasterThankmh=1.0):
 
 
 #https://en.wikipedia.org/wiki/Verlet_integration
-def verlet_integration(Xacc, Yacc, x0=0., y0=0., vx_0=0, vy_0=0, forward=np.array([1.0, 0.0])):
+def verlet_integration(Xacc, Yacc, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.0, 0.0])):
     vx = np.zeros(len(Xacc))
     vy = np.zeros(len(Xacc))
     x = np.zeros(len(Xacc))
     y = np.zeros(len(Xacc))
-    x[0] = x0
-    y[0] = y0
-    vx[0] = vx_0
-    vy[0] = vy_0
+    x[0],  y[0]  = x0,   y0
+    vx[0], vy[0] = vx_0, vy_0
     dt = Xacc[1]-Xacc[0]
     a = rotate(Yacc[0,1:], forward)
     x[1] = x[0] + vx[0]*dt + 1.0/2.0*a[0]*dt*dt
     y[1] = y[0] + vy[0]*dt + 1.0/2.0*a[1]*dt*dt
+    if isMoving(x[1]-x[0], y[1]-y[0], dt):
+        forward = np.array([x[1]-x[0], y[1]-y[0]])
     for i in range(1, len(Xacc)-1):
         dt = Xacc[i+1]-Xacc[i]
         a = rotate(Yacc[i,1:], forward)
@@ -208,13 +208,9 @@ def my_integration(t, Yacc, x0=0., y0=0., vx_0=0., vy_0=0.,
     else:
         return x, y, vx, vy, forward
 
-def rotatedIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.,0.]), return_velocity=False):
-    x, y, vx, vy = velocity_verlet_integration(t, a, 0., 0., 1., 0., forward)[0:4]
-    ar = np.zeros((len(t), 2)) #rotated starting velocity
-    ar[0,:] = rotate(a[0,1:], forward)
-    for i in range(1,len(t)):
-        #ar[i,:] = rotate(a[i,1:], np.array([vx[i]+vx[i-1],vy[i]+vy[i-1]]))
-        ar[i,:] = rotate(a[i,1:], np.array([vx[i]+vx[i-1],vy[i]+vy[i-1]]))
+def rotatingIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.,0.]), return_velocity=False):
+    from vectorRotation import rotatedAcceleration
+    ar = rotatedAcceleration(t, a, vx_0, vy_0, forward)
     xri = integrate.cumtrapz(integrate.cumtrapz(ar[:,0], t, initial=0.)+vx_0, t, initial=x0)
     yri = integrate.cumtrapz(integrate.cumtrapz(ar[:,1], t, initial=0.)+vy_0, t, initial=y0)
 # =============================================================================
@@ -307,8 +303,8 @@ def plotIntegration(Yacc, fig=None, ax=None):
     latFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,LEFT], x=Xacc, initial=v0[1]), x=Xacc, initial=0)
     """----ab hier weiter nach x/y lat/lon vertauschungen suchen-----"""
     ax.plot(Xacc, lonFromAcc, latFromAcc, 'r-', label=u'$\int\int a_{original}$d$t$ assuming world coordinates (likely wrong)')
-    lonFromAcc, latFromAcc = verlet_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
-    ax.plot(Xacc, lonFromAcc, latFromAcc, 'y--', label=u'$\int\int a_{original}$d$t$ (verlet integration)')
+    #lonFromAcc, latFromAcc = verlet_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
+    #ax.plot(Xacc, lonFromAcc, latFromAcc, 'y--', label=u'$\int\int a_{original}$d$t$ (verlet integration)')
     lonFromAcc, latFromAcc = velocity_verlet_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
     ax.plot(Xacc, lonFromAcc, latFromAcc, '--', label=u'$\int\int a_{original}$d$t$ (velocity verlet integration)')
     lonFromAcc, latFromAcc = my_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
@@ -357,12 +353,12 @@ if __name__ == "__main__":
                            "--", label='ground truth')
     xvvi, yvvi = velocity_verlet_integration(xCircle, yCircle, 0., 0., 1., 0.)[0:2]
     line1, = plt.plot(xvvi, yvvi, "-", label='position with "velocity verlet" integration')
-    xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1., 0.)[0:2]
-    line2, = plt.plot(xvi, yvi, "-", label='position with "verlet" integration')
+    #xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1., 0.)[0:2]
+    #line2, = plt.plot(xvi, yvi, "--", label='position with "verlet" integration')
     x, y, vx, vy, forward = my_integration(xCircle, yCircle, 0., 0., 1., 0.)
     line3, = plt.plot(x, y, "-", label='position with my integration')
     #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
-    xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
+    xri, yri = rotatingIntegration(xCircle, yCircle, 0., 0., 1., 0.)
     line4, = plt.plot(xri, yri, "--", label='position with simple double integration of rotated a')
     #test, = plt.plot(vx, vy, label='velocity')
     axis1 = plt.axes([0.28, 0.01, 0.58, 0.03], facecolor='lightgoldenrodyellow')
@@ -382,16 +378,16 @@ if __name__ == "__main__":
         xvvi, yvvi = velocity_verlet_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)[0:2]
         line1.set_xdata(xvvi)
         line1.set_ydata(yvvi)
-        xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)[0:2]
-        line2.set_xdata(xvi)
-        line2.set_ydata(yvi)
+        #xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)[0:2]
+        #line2.set_xdata(xvi)
+        #line2.set_ydata(yvi)
         x, y, vx, vy, forward = my_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)
         line3.set_xdata(x)
         line3.set_ydata(y)
         #test.set_xdata(vx)
         #test.set_ydata(vy)
         #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
-        xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
+        xri, yri = rotatingIntegration(xCircle, yCircle, 0., 0., 1., 0.)
         line4.set_xdata(xri)
         line4.set_ydata(yri)
         fig.canvas.draw_idle()
@@ -410,17 +406,15 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
     
-# =============================================================================
-#     """test integration of real acceleration data vs GPS"""
-#     fig = plt.figure(figsize=(7.,7.))
-#     ax = fig.add_subplot(111, projection='3d')
-#     plotIntegration(Yacc, fig, ax)
-#     fig.legend(loc='lower left', fontsize='small')
-#     #ax.get_proj = lambda: np.dot(Axes3D.get_proj(ax), np.diag([0.8, 1, 1, 1]))
-#     fig.subplots_adjust(top=1.1, right=1.1)
-#     #fig.tight_layout()
-#     fig.show()
-# =============================================================================
+    """test integration of real acceleration data vs GPS"""
+    fig = plt.figure(figsize=(7.,7.))
+    ax = fig.add_subplot(111, projection='3d')
+    plotIntegration(Yacc, fig, ax)
+    fig.legend(loc='lower left', fontsize='small')
+    #ax.get_proj = lambda: np.dot(Axes3D.get_proj(ax), np.diag([0.8, 1, 1, 1]))
+    fig.subplots_adjust(top=1.1, right=1.1)
+    #fig.tight_layout()
+    fig.show()
     
     
     """test coordinates"""
