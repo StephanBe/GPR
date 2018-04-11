@@ -340,6 +340,7 @@ def leastSqFit():
     gps = Data.latlonToMeter(Ygps)
     v0, forward, moving = initialValues(Xacc, Xgps, gps[:,0], gps[:,1])
     x0 = gpr(Xgps, gps, [Xgps[0]])[0].flatten()
+    #lief ewig durch (letztes ergebnis:)
     #1430.51864191
     #[-21.10348547  19.77660511  -0.96695157  -2.09175524]
     initialGuess = np.array([v0[0], v0[1], 0, 0])
