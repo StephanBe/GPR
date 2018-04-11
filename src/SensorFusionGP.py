@@ -64,7 +64,7 @@ def derivative_GP(X_pos, X_acc, Y_pos, Y_acc, s1, l, s2, noiseGPS = 4., noiseAcc
     
     #now we have set M = K @ latentY and can try to find this latent Y
     S = kernel(training, training, s1, l, s2)
-    S2 = kernel(test, test, s1, l)
+    S2 = kernel(test, test, s1, l, s2)
     S12 = kernel(test, training, s1, l, s2)
     S21 = kernel(training, test, s1, l, s2)
     noise = [noiseGPS*noiseGPS]*len(Y_pos)+[noiseAcc*noiseAcc]*len(Y_acc)
@@ -79,9 +79,14 @@ def derivative_GP(X_pos, X_acc, Y_pos, Y_acc, s1, l, s2, noiseGPS = 4., noiseAcc
     return test, mu2_1, S2_1
 
 def initialValues(t_a, t_p, p_lat, p_lon):
-    """get initial values"""
+    """
+    get initial values
+    
+    returns v0, forward, moving
+    """
     v0 = None
     moving = 0
+    forward = np.array([float('nan'), float('nan')])
     for i in range(1, len(t_p)):
         dx = p_lon[i] - p_lon[i-1]
         dy = p_lat[i] - p_lat[i-1]
@@ -138,7 +143,7 @@ if __name__ == "__main__":
         ):
         curve = a[1,:]
         s1 = 10.
-        s2 = 1.
+        s2 = 0.
         l = 0.5
         noiseP = 4.
         noiseA = 50.
@@ -154,8 +159,8 @@ if __name__ == "__main__":
         axnoiseA = fig.add_axes([0.38,0.01,0.50,0.03])
         scurve  = Slider(axcurve,  'curve', valmin=-100, valmax=100., valinit=curve, valfmt='%0.2f')
         ssigma  = Slider(axsigma,  'sigma', valmin=0.01, valmax=20., valinit=s1, valfmt='%0.2f')
-        ssigma2 = Slider(axsigma2, 'sigma2', valmin=0.01, valmax=1., valinit=s2, valfmt='%0.2f')
-        slength = Slider(axlength, 'length scale', valmin=0.01, valmax=10., valinit=l, valfmt='%0.4f')
+        ssigma2 = Slider(axsigma2, 'sigma2', valmin=0., valmax=20., valinit=s2, valfmt='%0.2f')
+        slength = Slider(axlength, 'length scale', valmin=0.01, valmax=20., valinit=l, valfmt='%0.4f')
         snoiseP = Slider(axnoiseP, 'noise of data', valmin=1e-7, valmax=10., valinit=noiseP, valfmt='%0.5f')
         snoiseA = Slider(axnoiseA, 'noise of curvature', valmin=1e-7, valmax=100., valinit=noiseA, valfmt='%0.5f')
         
@@ -179,14 +184,55 @@ if __name__ == "__main__":
     
     gps = Data.latlonToMeter(Data.Ygps)
     v0, forward, moving = initialValues(Data.Xacc, Data.Xgps, gps[:,0], gps[:,1])
-    acc = rotatedAcceleration(Data.Xacc, Data.Yacc, v0[0], v0[1], forward)
+    
+    acc_obj = np.copy(Data.Yacc)
+# =============================================================================
+#     #vorher: android x (Yacc[:,0] = nach unten beschleunigen)
+#     #vorher: android y (Yacc[:,1] = nach links beschleunigen)
+#     #vorher: android z (Yacc[:,2] = nach hinten beschleunigen)
+#     DOWN = 0
+#     FORWARD = 1
+#     LEFT = 2
+#     acc_obj[:,DOWN] = Data.Yacc[:,0]
+#     acc_obj[:,FORWARD] = -Data.Yacc[:,2]
+#     acc_obj[:,LEFT] = Data.Yacc[:,1]
+# =============================================================================
+    
+    acc = rotatedAcceleration(Data.Xacc, acc_obj, v0[0], v0[1], forward)
+    
+    #plot 1
     keeping_sliders_responsive = TEST_plot_with_sliders(
                             Data.Xgps.reshape(-1,1),
                             gps[:,1].reshape(-1,1),
                             Data.Xacc.reshape(-1,1),
-                            acc[:,1].reshape(-1,1))
+                            acc[:,0].reshape(-1,1))
+    
+    #plot 2
     keeping_sliders_responsive2 = TEST_plot_with_sliders(
                             Data.Xgps.reshape(-1,1),
                             gps[:,0].reshape(-1,1),
                             Data.Xacc.reshape(-1,1),
-                            acc[:,0].reshape(-1,1))
+                            acc[:,1].reshape(-1,1))
+    
+    #plot 3
+    from Integration import rotatingIntegration
+    xri, yri = rotatingIntegration(Data.Xacc, acc_obj, 0., 0., v0[0], v0[1], forward)
+    pyplot.figure()
+    pyplot.plot(xri, yri, label="position from integration")
+    pyplot.plot(gps[:,1], gps[:,0], label="position from gps")
+    pyplot.legend()
+    
+    
+    #plot 4
+    from Integration import my_integration
+    v = my_integration(Data.Xacc, Data.Yacc, 0, 0, v0[0], v0[1], forward)[4]
+    pyplot.figure()
+    pyplot.plot(Data.Xacc, v[:,0], "r-", label="$v_x$ from acc")
+    pyplot.plot(Data.Xacc, v[:,1], "b-", label="$v_y$ from acc")
+    v = (gps[1:,:]-gps[:-1,:])/(Data.Xgps[1:,:]-Data.Xgps[:-1,:])
+    v = np.insert(v, 0, v0[[1,0]], axis=0)
+    a = (v[1:,:]-v[:-1,:])/(Data.Xgps[1:,:]-Data.Xgps[:-1,:])
+    a = np.insert(a, 0, [0, 0], axis=0)
+    pyplot.plot(Data.Xgps, v[:,1], "r--", label="$v_{lon}$ from gps")
+    pyplot.plot(Data.Xgps, v[:,0], "b--", label="$v_{lat}$ from gps")
+    pyplot.legend()

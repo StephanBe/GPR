@@ -20,13 +20,22 @@ def rotate(a, newXAxis):
     return(b)
 
 def rotatedAcceleration(t, a, vx_0, vy_0, forward):
-    from Integration import velocity_verlet_integration
-    x, y, vx, vy = velocity_verlet_integration(t, a, 0., 0., vx_0, vy_0, forward)[0:4]
+    """
+    t is the time stamp corresponding to a.
+    
+    columns of object space acceleration a: [DOWN, FORWARD, LEFT]
+    
+    returns rotated accerleration data (shape [len(t), 2])
+    """
+    #from Integration import velocity_verlet_integration
+    #x, y, vx, vy = velocity_verlet_integration(t, a, 0., 0., vx_0, vy_0, forward)[0:4]
+    from Integration import my_integration
+    v = my_integration(t, a, 0., 0., vx_0, vy_0, forward)[4]
     a_r = np.zeros((len(t), 2)) #rotated starting velocity
     a_r[0,:] = rotate(a[0,1:], forward)
     for i in range(1,len(t)):
         #a_r[i,:] = rotate(a[i,1:], np.array([vx[i]+vx[i-1],vy[i]+vy[i-1]]))
-        a_r[i,:] = rotate(a[i,1:], np.array([vx[i]+vx[i-1],vy[i]+vy[i-1]]))
+        a_r[i,:] = rotate(a[i,1:], v[i,:])
     return a_r
 
 if __name__ == "__main__":

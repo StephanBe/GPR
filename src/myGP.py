@@ -21,22 +21,22 @@ def sqared_exponential_kernel(a, b, s=1., l=1.):
     Squared Exponential Kernel.
     """
     sqdist = np.sum(a**2,1).reshape(-1, 1) + np.sum(b**2,1) - 2.*(a @ b.T)
-    return s**2 * np.exp(-1./(2. * l**2) * sqdist)
+    return (s**2) * np.exp(-1./(2. * l**2) * sqdist)
 
 #Linear Kernel
-def linear_kernel(x1, x2, noise=0., s=1., c=0.):
+def linear_kernel(x1, x2, s=1., c=0.):
     """
     Squared Exponential Kernel.
     
     c is the starting point for the linear prior.
     """
-    return noise**2 + (s**2) * (x1-c)*(x2-c).T
+    return (s**2) * ((x1-c) * ((x2-c).T))
 
 def kernel(a, b, s=1., l=1., s_linear=1., noise=0.):
     """
     Currently used all purpose kernel.
     """
-    return sqared_exponential_kernel(a, b, s, l) + linear_kernel(a, b, noise=noise, s=s_linear)
+    return noise * noise + sqared_exponential_kernel(a, b, s, l) + linear_kernel(a, b, s=s_linear)
 
 #for 1 dimension at a time!
 def derivative_GP(X_pos, X_acc, Y_pos, Y_acc, s, l, noiseGPS = 4., noiseAcc = 0.2):
@@ -352,23 +352,23 @@ if __name__ == "__main__":
         axlength = fig.add_axes([0.38,0.05,0.50,0.03])
         axnoise = fig.add_axes([0.38,0.01,0.50,0.03])
         gps = Data.latlonToMeter(Data.Ygps)#Data.Ygps
-        gpsy = gps[:,0].reshape(-1,1) #lat
-        gpsx = gps[:,1].reshape(-1,1) #lon
+        gpsx = gps[:,0].reshape(-1,1) #lat
+        gpsy = gps[:,1].reshape(-1,1) #lon
         
         #==============================================================================
         # s = 90000
         # l = 60
         # noise=9
         #==============================================================================
-        s=0.1
-        l=10
-        noise=0.0001
+        s=20
+        l=1.5
+        noise=4
         ndata=len(gpsx)
         sdata = Slider(axdata, 'number of data points', valmin=1, valmax=len(gpsx), valinit=len(gpsx), valfmt='%0.0f')
-        ssigma = Slider(axsigma, 'sigma', valmin=0.01, valmax=10, valinit=s, valfmt='%0.3f')
-        slength = Slider(axlength, 'length scale', valmin=1, valmax=100.0, valinit=l, valfmt='%0.4f')
-        snoise = Slider(axnoise, 'noise', valmin=0.000001, valmax=0.0001, valinit=noise, valfmt='%0.5f')
-        plot_gp(Data.Xgps, gpsy, ndata, s, l, noise, ax)
+        ssigma = Slider(axsigma, 'sigma', valmin=0.01, valmax=100, valinit=s, valfmt='%0.3f')
+        slength = Slider(axlength, 'length scale', valmin=0.1, valmax=100.0, valinit=l, valfmt='%0.4f')
+        snoise = Slider(axnoise, 'noise', valmin=1e-7, valmax=100, valinit=noise, valfmt='%0.5f')
+        plot_gp(Data.Xgps, gpsx, ndata, s, l, noise, ax)
         #plot_gp2(Data.Xgps, gps, len(gpsx), 90000, 60, 9, ax)
         def update(val):
             ndata = int(round(sdata.val))
@@ -376,13 +376,14 @@ if __name__ == "__main__":
             l = slength.val
             noise = snoise.val
             ax.clear() #workaround becaue I could not update the "fill" part
-            plot_gp(Data.Xgps, gpsy, ndata, s, l, noise, ax)
+            plot_gp(Data.Xgps, gpsx, ndata, s, l, noise, ax)
             #plot_gp2(Data.Xgps, gps, ndata, s, l, noise, ax)
             fig.canvas.draw_idle()
         sdata.on_changed(update)
         ssigma.on_changed(update)
         slength.on_changed(update)
         snoise.on_changed(update)
+        return [sdata, ssigma, slength, snoise]
     
     
     
@@ -404,16 +405,20 @@ if __name__ == "__main__":
         # l = 60
         # noise=9
         #==============================================================================
-        s=30
-        l=0.05
-        noise=1.2
+        s=20
+        l=1.5
+        noise=4
         #ndata=len(gpsx)
         sdata = Slider(axdata, 'number of data points', valmin=1, valmax=len(gpsx), valinit=len(gpsx), valfmt='%0.0f')
         ssigma = Slider(axsigma, 'sigma', valmin=1., valmax=200., valinit=s, valfmt='%0.3f')
-        slength = Slider(axlength, 'length scale', valmin=0.001, valmax=0.5, valinit=l, valfmt='%0.4f')
+        slength = Slider(axlength, 'length scale', valmin=0.01, valmax=20, valinit=l, valfmt='%0.4f')
         snoise = Slider(axnoise, 'noise', valmin=0.1, valmax=50, valinit=noise, valfmt='%0.5f')
         #plot_gp(Data.Xgps, gpsy, ndata, s, l, noise, ax)
-        plot_derivative_gp(Data.Xgps, gps, Data.Xacc, Data.Yacc[:,[2,1]], s, l, noise, ax)
+        from vectorRotation import rotatedAcceleration
+        from SensorFusionGP import initialValues
+        v0, forward, moving = initialValues(Data.Xacc, Data.Xgps, gps[:,0], gps[:,1])
+        ar = rotatedAcceleration(Data.Xacc, Data.Yacc, v0[0], v0[1], forward)
+        plot_derivative_gp(Data.Xgps, gps, Data.Xacc, ar, s, l, noise, ax)
         ax.set_xlim(np.min(gps[:,1])-5, np.max(gps[:,1])+5)
         ax.set_ylim(np.min(gps[:,0])-5, np.max(gps[:,0])+5)
         #plot_gp2(Data.Xgps, gps, len(gpsx), 90000, 60, 9, ax)
@@ -424,7 +429,7 @@ if __name__ == "__main__":
             noise = snoise.val
             ax.clear() #workaround becaue I could not update the "fill" part
             #plot_gp(Data.Xgps, gpsy, ndata, s, l, noise, ax)
-            plot_derivative_gp(Data.Xgps, gps, Data.Xacc, Data.Yacc[:,[2,1]], s, l, noise, ax)
+            plot_derivative_gp(Data.Xgps, gps, Data.Xacc, ar, s, l, noise, ax)
             ax.set_xlim(np.min(gps[:,1])-5, np.max(gps[:,1])+5)
             ax.set_ylim(np.min(gps[:,0])-5, np.max(gps[:,0])+5)
             #plot_gp2(Data.Xgps, gps, ndata, s, l, noise, ax)
@@ -433,6 +438,7 @@ if __name__ == "__main__":
         ssigma.on_changed(update)
         slength.on_changed(update)
         snoise.on_changed(update)
+        return [sdata, ssigma, slength, snoise]
     
     def plot_gp2(x=np.array([[0.0],[1.04],[1.08],[1.12],[3.0]]),
                 f=np.array([[0,0],[0.1,-0.1],[1,0],[3,1],[5,1]]), ndata=1,
@@ -505,11 +511,12 @@ if __name__ == "__main__":
             predictionLine[0].set_3d_properties(mu_star2.flatten())
             return dataPoints, predictionLine
     
+    #2nd plot
     plot_gp_prio_samples_some_parameters()
-    
-    plot_adjustable_GP()
-    
-    plot_adjustable_derivative_GP()
+    #3rd plot
+    preserveSliders = plot_adjustable_GP()
+    #4th plot
+    preserveSliders2 = plot_adjustable_derivative_GP()
     
     
     fig2 = pyplot.figure()
@@ -521,8 +528,8 @@ if __name__ == "__main__":
     axlength2 = fig2.add_axes([0.38,0.05,0.50,0.03])
     axnoise2 = fig2.add_axes([0.38,0.01,0.50,0.03])
     gps = Data.Ygps#Data.latlonToMeter(Data.Ygps)
-    gpsy = gps[:,0].reshape(-1,1) #lat
-    gpsx = gps[:,1].reshape(-1,1) #lon
+    gpsx = gps[:,0].reshape(-1,1) #lat
+    gpsy = gps[:,1].reshape(-1,1) #lon
     #==============================================================================
     # s = 90000
     # l = 60
