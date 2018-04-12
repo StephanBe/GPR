@@ -28,12 +28,13 @@ def gpr(x_train, y_train, x_pred):
     #WhiteKernel for noise estimation (alternatively set alpha in GaussianProcessRegressor()) 
     #ConstantKernel for signal variance
     #RBF for length-scale
-    kernel = RBF(0.1, (0.01, 10))*ConstantKernel(1.0, (0.1, 100)) + WhiteKernel(0.1, (0.01,1))
+    kernel = RBF(0.1, (0.01, 10))*ConstantKernel(1.0, (0.1, 100)) + WhiteKernel(0.1, (0.01,10))
     #noise = 0.1
     
     gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=3, normalize_y=False)
     mean = np.mean(y_train, 0)
     gp.fit(x_train, y_train-mean)
+    #print(gp.kernel_)
     y_pred, sigma = gp.predict(x_pred, return_std=True)
     y_pred += mean
     return y_pred, sigma
@@ -58,8 +59,9 @@ LEFT = 2
 Yacc[:,LEFT] = tmp[:,1] #danach: Yacc[:,2] = beschleunigung nach links
 #Yacc[:,LEFT] = np.zeros(Yacc[:,LEFT].shape)
 
-"""return true if v > 1 km/h or any speed given"""
+
 def isMoving(deltaXPosition, deltaYPosition, deltaTime, fasterThankmh=1.0):
+    """return true if v > 1 km/h or any speed given"""
     x = deltaXPosition
     y = deltaYPosition
     t = deltaTime
@@ -100,19 +102,19 @@ def isMoving(deltaXPosition, deltaYPosition, deltaTime, fasterThankmh=1.0):
 
 
 #https://en.wikipedia.org/wiki/Verlet_integration
-def verlet_integration(Xacc, Yacc, x0=0., y0=0., vx_0=0, vy_0=0, forward=np.array([1.0, 0.0])):
+def verlet_integration(Xacc, Yacc, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.0, 0.0])):
     vx = np.zeros(len(Xacc))
     vy = np.zeros(len(Xacc))
     x = np.zeros(len(Xacc))
     y = np.zeros(len(Xacc))
-    x[0] = x0
-    y[0] = y0
-    vx[0] = vx_0
-    vy[0] = vy_0
+    x[0],  y[0]  = x0,   y0
+    vx[0], vy[0] = vx_0, vy_0
     dt = Xacc[1]-Xacc[0]
     a = rotate(Yacc[0,1:], forward)
     x[1] = x[0] + vx[0]*dt + 1.0/2.0*a[0]*dt*dt
     y[1] = y[0] + vy[0]*dt + 1.0/2.0*a[1]*dt*dt
+    if isMoving(x[1]-x[0], y[1]-y[0], dt):
+        forward = np.array([x[1]-x[0], y[1]-y[0]])
     for i in range(1, len(Xacc)-1):
         dt = Xacc[i+1]-Xacc[i]
         a = rotate(Yacc[i,1:], forward)
@@ -145,9 +147,73 @@ def velocity_verlet_integration(Xacc, Yacc, x0=0., y0=0., vx_0=0, vy_0=0, forwar
         vy[i+1] = vy[i] + dt*(a[1] + aNext[1])/2
     return x, y, vx, vy
 
+def my_integration(t, a_object,
+                   x0=0., y0=0.,
+                   vx_0=0, vy_0=0,
+                   forward=np.array([1.0, 0.0]),
+                   return_rotated_acceleration=False):
+    """
+    t is the time stamp corresponding to a.
+    
+    columns of object space acceleration a: [DOWN, FORWARD, LEFT]
+    
+    returns p_x, p_y, v_x, v_y, v[, a]
+    """
+    a_o = a_object[:,1:]
+    v = np.zeros((len(t), 2))
+    p = np.zeros((len(t), 2))
+    p[0,:] = np.array([x0, y0])
+    v[0,:] = np.array([vx_0, vy_0])
+    v[1,:] = np.array([vx_0, vy_0])
+    if v[0,0] != 0. and v[0,1] != 0.:
+        forward = v[0,:]
+    for i in range(len(t)-1):
+        dt = t[i+1]-t[i]
+        a = rotate(a_o[i,:], forward)
+        for j in range(10):
+            aNext = rotate(a_o[i+1,:], forward)
+            v[i+1,:] = v[i,:] + dt*(a + aNext)/2.
+            if v[i+1,0] != 0. and v[i+1,1] != 0.:
+                forward = v[i+1,:]
+        if i < len(t)-2:
+            v[i+2,:] = v[i+1,:]
+        p[i+1,:] = p[i,:] + dt*v[i,:] + dt*dt*(a+aNext)/4.
+    if return_rotated_acceleration:
+        return p[:,0], p[:,1], v[:,0], v[:,1], v, a
+    else:
+        return p[:,0], p[:,1], v[:,0], v[:,1], v
+
+def my_integrationold(t, a_object,
+                      x0=0., y0=0.,
+                      vx_0=0, vy_0=0,
+                      forward=np.array([1.0, 0.0]),
+                      return_rotated_acceleration=False):
+    a_o = a_object[:,1:]
+    v = np.zeros((len(t), 2))
+    p = np.zeros((len(t), 2))
+    a = np.zeros((len(t), 2))
+    p[0,:] = np.array([x0, y0])
+    v[0,:] = np.array([vx_0, vy_0])
+    v[1,:] = np.array([vx_0, vy_0])
+    a[0,:] = a_o[0,:]
+    for i in range(len(t)-1):
+        for j in range(10):
+            dt = t[i+1]-t[i]
+            a[i,:] = rotate(a_o[i,:],   v[i,:]+v[i+1,:])
+            p[i+1,:] = p[i,:] + v[i,:]*dt + 1.0/2.0*a[i,:]*dt*dt
+            a[i+1,:] = rotate(a_o[i+1,:], v[i,:]+v[i+1,:])
+            v[i+1,:] = v[i,:] + dt*(a[i,:] + a[i+1,:])/2.
+    if return_rotated_acceleration:
+        return p[:,0], p[:,1], v[:,0], v[:,1], v, a
+    else:
+        return p[:,0], p[:,1], v[:,0], v[:,1], v
+
 #my integration
-def my_integration(t, Yacc, x0=0., y0=0., vx_0=0., vy_0=0.,
-                   forward=np.array([1.0, 0.0]), return_rotated_acceleration=False):
+def my_integration_oldest(t, Yacc,
+                          x0=0., y0=0.,
+                          vx_0=0., vy_0=0.,
+                          forward=np.array([1.0, 0.0]),
+                          return_rotated_acceleration=False):
     vx = np.zeros(len(t))
     vy = np.zeros(len(t))
     x = np.zeros(len(t))
@@ -208,15 +274,14 @@ def my_integration(t, Yacc, x0=0., y0=0., vx_0=0., vy_0=0.,
     else:
         return x, y, vx, vy, forward
 
-def rotatedIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.,0.]), return_velocity=False):
-    x, y, vx, vy, forward, a = my_integration(t, a, 0., 0., 1., 0., forward, True)
-    v0 = np.repeat([[vx_0, vy_0]], len(t), axis=0) #rotated starting velocity
-# =============================================================================
-#     for i in range(len(t)):
-#         v0[i,:] = rotate(v0[i,:], forward[i,:])
-# =============================================================================
-    xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=0.)+v0[:,0], t, initial=0.)+x0
-    yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=0.)+v0[:,1], t, initial=0.)+y0
+def rotatingIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.,0.]), return_velocity=False):
+    """Rotate given object space acceleration a and double integrate to world space position x"""
+    from vectorRotation import rotatedAcceleration
+    t = t.flatten()
+    ar = rotatedAcceleration(t, a, vx_0, vy_0, forward)
+    #x, y, vx, vy, forward, ar = my_integration(t, a, 0., 0., 1., 0., forward, True)
+    xri = integrate.cumtrapz(integrate.cumtrapz(ar[:,0], t, initial=0.)+vx_0, t, initial=0.)+x0
+    yri = integrate.cumtrapz(integrate.cumtrapz(ar[:,1], t, initial=0.)+vy_0, t, initial=0.)+y0
 # =============================================================================
 #     xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=vx_0), t, initial=0.)+x0
 #     yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=vy_0), t, initial=0.)+y0
@@ -249,6 +314,41 @@ def rotatedIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1
 def accToPos(Xacc, Yacc, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1.0, 0.0])):
     return my_integration(Xacc, Yacc, x0, y0, vx_0, vy_0, forward)
 
+def error(x, x0, forward):
+    print(x)
+    #expand arguments
+    #x0, forward = args
+    vx_0, vy_0, ax_calibration, ay_calibration = x
+    
+    #guess acceleration data at GPS time stamps
+    a_calibrated = Yacc + [-9.81, ax_calibration, ay_calibration]
+    lon_a, lat_a = accToPos(Xacc, a_calibrated, x0[0], x0[1], vx_0, vy_0, forward)[0:2]
+    lonlat_a = gpr(Xacc.reshape(-1,1), np.array([lon_a, lat_a]).T, Xgps)[0]
+    
+    #prepare GPS data
+    gps = Data.latlonToMeter(Ygps)
+    
+    #calculate error (sum of all errors per point has the same order as RMSE)
+    residual = (gps - lonlat_a)
+    error = np.sum(np.sqrt(np.sum(residual * residual, axis=1)))
+    print(error)
+    return error
+
+def leastSqFit():   
+    print("Fehler:")
+    from SensorFusionGP import initialValues
+    gps = Data.latlonToMeter(Ygps)
+    v0, forward, moving = initialValues(Xacc, Xgps, gps[:,0], gps[:,1])
+    x0 = gpr(Xgps, gps, [Xgps[0]])[0].flatten()
+    #lief ewig durch (letztes ergebnis:)
+    #1430.51864191
+    #[-21.10348547  19.77660511  -0.96695157  -2.09175524]
+    initialGuess = np.array([v0[0], v0[1], 0, 0])
+    from scipy.optimize import minimize
+    init = minimize(error, initialGuess, (x0, forward), method='BFGS')
+    print(init)
+    return init
+
 def plotIntegration(Yacc, fig=None, ax=None):
     #lat lon zu Meter
     Ygpsnorm = Data.latlonToMeter(Ygps)
@@ -264,16 +364,18 @@ def plotIntegration(Yacc, fig=None, ax=None):
     
     """add gps prediction using 3D-GPR"""
     xGP = np.atleast_2d(np.linspace(min(Xgps), max(Xgps), 1000)).T
-    kernel = RBF(1, (0.1, 100)) *\
-             ConstantKernel(1.0, (1, 100)) +\
-             DotProduct(0.01,(0.01,5)) *\
-             ConstantKernel(1.0, (1, 100))# + WhiteKernel(noise_level=0.1 ** 2)
-    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=3, normalize_y=True)
+    kernel = RBF(10., (0.1, 10)) *\
+             ConstantKernel(1.0, (0.01, 10)) *\
+             DotProduct(1.,(0.01,100)) *\
+             ConstantKernel(1.0, (0.001, 10)) +\
+             WhiteKernel(noise_level=4, noise_level_bounds=(0.01, 10))
+    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=12, normalize_y=True)
     gp.fit(Xgps, Ygpsnorm)
+    print(gp.kernel_)
     y_pred, sigma = gp.predict(xGP, return_std=True)
     latGP = y_pred[:,0]
     lonGP = y_pred[:,1]
-    ax.plot(xGP, lonGP, latGP, 'y-', label=u'Prediction')
+    ax.plot(xGP, lonGP, latGP, 'r-', label=u'Prediction (%s)' % (gp.kernel_))
     samples = gp.sample_y(xGP, 20)
     for i in range(samples.shape[2]):
         latGP = samples[:,0,i]
@@ -303,12 +405,13 @@ def plotIntegration(Yacc, fig=None, ax=None):
             print("calculated initial forward vector: "+str(forward))
             print("(vector normalization is done during rotation)")
             break
-    lonFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,FORWARD], x=Xacc, initial=0.)+v0[0], x=Xacc, initial=0)
-    latFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,LEFT], x=Xacc, initial=0.)+v0[1], x=Xacc, initial=0)
-    """----ab hier weiter nach x/y lat/lon vertauschungen suchen-----"""
-    ax.plot(Xacc, lonFromAcc, latFromAcc, 'r-', label=u'$\int\int a_{original}$d$t$ assuming world coordinates (likely wrong)')
-    lonFromAcc, latFromAcc = verlet_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
-    ax.plot(Xacc, lonFromAcc, latFromAcc, 'y--', label=u'$\int\int a_{original}$d$t$ (verlet integration)')
+    
+    """double integrate acceleration to position"""
+    #lonFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,FORWARD], x=Xacc, initial=0.)+v0[0], x=Xacc, initial=0)
+    #latFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,LEFT], x=Xacc, initial=0.)+v0[1], x=Xacc, initial=0)
+    #ax.plot(Xacc, lonFromAcc, latFromAcc, 'r-', label=u'$\int\int a_{original}$d$t$ assuming world coordinates (likely wrong)')
+    #lonFromAcc, latFromAcc = verlet_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
+    #ax.plot(Xacc, lonFromAcc, latFromAcc, 'y--', label=u'$\int\int a_{original}$d$t$ (verlet integration)')
     lonFromAcc, latFromAcc = velocity_verlet_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
     ax.plot(Xacc, lonFromAcc, latFromAcc, '--', label=u'$\int\int a_{original}$d$t$ (velocity verlet integration)')
     lonFromAcc, latFromAcc = my_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
@@ -344,6 +447,9 @@ def plotIntegration(Yacc, fig=None, ax=None):
 
 if __name__ == "__main__":
     
+    leastSqFit()
+    
+    
     """test circle"""
     centripetal=-0.2
     N = 0.01
@@ -352,17 +458,19 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(5,5))
     fig.subplots_adjust(bottom=0.15)
     #plt.plot(yCircle[:,0], yCircle[:,1])
+    groundtruth, = plt.plot(np.cos(pi*2*np.array(range(1001))/1000)/centripetal,
+                           (np.sin(pi*2*np.array(range(1001))/1000)+1)/centripetal,
+                           "--", label='ground truth')
     xvvi, yvvi = velocity_verlet_integration(xCircle, yCircle, 0., 0., 1., 0.)[0:2]
-    line1, = plt.plot(xvvi, yvvi, "--", label='position with "velocity verlet" integration')
-    xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1., 0.)[0:2]
-    line2, = plt.plot(xvi, yvi, "--", label='position with "verlet" integration')
+    line1, = plt.plot(xvvi, yvvi, "-", label='position with "velocity verlet" integration')
+    #xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1., 0.)[0:2]
+    #line2, = plt.plot(xvi, yvi, "--", label='position with "verlet" integration')
     x, y, vx, vy, forward = my_integration(xCircle, yCircle, 0., 0., 1., 0.)
     line3, = plt.plot(x, y, "-", label='position with my integration')
     #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
-    xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
-    line4, = plt.plot(xri, yri, ".-", label='position with simple double integration of rotated a')
-    test, = plt.plot(vx, vy, label='velocity')
-    groundtruth, = plt.plot(np.cos(xCircle)/(2*pi), np.sin(xCircle)/(2*pi), label="ground truth")
+    xri, yri = rotatingIntegration(xCircle, yCircle, 0., 0., 1., 0.)
+    line4, = plt.plot(xri, yri, "--", label='position with simple double integration of rotated a')
+    #test, = plt.plot(vx, vy, label='velocity')
     axis1 = plt.axes([0.28, 0.01, 0.58, 0.03], facecolor='lightgoldenrodyellow')
     axis2 = plt.axes([0.28, 0.05, 0.58, 0.03], facecolor='green', label='resolution')
     slider1 = Slider(axis1, 'centripetal force', valmin=-1.0, valmax=1.0, valinit=centripetal, valfmt='%0.3f')
@@ -374,19 +482,22 @@ if __name__ == "__main__":
         xCircle = np.array(range(int(100*10**N)))/float(10**N)
         slider2.valtext.set_text(round((10**N)*100.0)/100.0)
         yCircle = np.array([[i, 0.0, centripetal] for i in xCircle])
+        
+        groundtruth.set_xdata(np.cos(pi*2*np.array(range(101))/100)/centripetal)
+        groundtruth.set_ydata((np.sin(pi*2*np.array(range(101))/100)+1)/centripetal)
         xvvi, yvvi = velocity_verlet_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)[0:2]
         line1.set_xdata(xvvi)
         line1.set_ydata(yvvi)
-        xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)[0:2]
-        line2.set_xdata(xvi)
-        line2.set_ydata(yvi)
+        #xvi, yvi = verlet_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)[0:2]
+        #line2.set_xdata(xvi)
+        #line2.set_ydata(yvi)
         x, y, vx, vy, forward = my_integration(xCircle, yCircle, 0., 0., 1.0, 0.0)
         line3.set_xdata(x)
         line3.set_ydata(y)
-        test.set_xdata(vx)
-        test.set_ydata(vy)
+        #test.set_xdata(vx)
+        #test.set_ydata(vy)
         #v = get_rotation(xCircle, yCircle[:,1:], np.array([1.,0.]))
-        xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
+        xri, yri = rotatingIntegration(xCircle, yCircle, 0., 0., 1., 0.)
         line4.set_xdata(xri)
         line4.set_ydata(yri)
         fig.canvas.draw_idle()
@@ -394,6 +505,8 @@ if __name__ == "__main__":
     slider1.on_changed(update)
     slider2.on_changed(update)
     plt.show()
+    
+    
     #plot angle over iteration
     plt.figure()
     plt.title("angle of the circular movement (from integrating accel.)")
@@ -405,31 +518,30 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
     
-# =============================================================================
-#     """test integration of real acceleration data vs GPS"""
-#     fig = plt.figure(figsize=(7.,7.))
-#     ax = fig.add_subplot(111, projection='3d')
-#     plotIntegration(Yacc, fig, ax)
-#     fig.legend(loc='lower left', fontsize='small')
-#     #ax.get_proj = lambda: np.dot(Axes3D.get_proj(ax), np.diag([0.8, 1, 1, 1]))
-#     fig.subplots_adjust(top=1.1, right=1.1)
-#     #fig.tight_layout()
-#     fig.show()
-# =============================================================================
+    """test integration of real acceleration data vs GPS"""
+    fig = plt.figure(figsize=(7.,7.))
+    ax = fig.add_subplot(111, projection='3d')
+    plotIntegration(Yacc, fig, ax)
+    fig.legend(loc='lower left', fontsize='small')
+    #ax.get_proj = lambda: np.dot(Axes3D.get_proj(ax), np.diag([0.8, 1, 1, 1]))
+    fig.subplots_adjust(top=1.1, right=1.1)
+    #fig.tight_layout()
+    fig.show()
     
-    
-    """test coordinates"""
+
+"""    
+    #test coordinates
     def plotCoordinateShuffle():
-        """
-        +1 +-2
-           `/
-        +2 +-1
-           ||
-        -1 +-2
-           |\
-        -2 +-1
-           ||
-        """
+        #
+        #+1 +-2
+        #   `/
+        #+2 +-1
+        #   ||
+        #-1 +-2
+        #   |\
+        #-2 +-1
+        #   ||
+        #
         fig = plt.figure()
         Yacc[:,2] = tmp[:,1]
         Yacc[:,1] = tmp[:,2]
@@ -481,13 +593,12 @@ if __name__ == "__main__":
         
         fig.show()
         
-    #plotCoordinateShuffle()
-    
-    
-    
-    
+    plotCoordinateShuffle()
 
-"""
+
+
+
+
 def accToPos():
     vx = np.zeros(len(Xacc))
     vy = np.zeros(len(Xacc))

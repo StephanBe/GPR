@@ -10,7 +10,7 @@ import csv
 from datetime import datetime
 import os
 from matplotlib import pyplot
-from math import cos, pi
+from math import cos, pi, atan2
 from scipy import integrate
 import platform
 
@@ -119,23 +119,37 @@ while i < len(Xacc)-1:
 #[ 9.921572  -0.1340753 -0.2106898]
 #print(numpy.mean(Ygyr[0:120,:], axis=0))
 #[ 0.002586   -0.00454077 -0.00711658]
+
 diffAcc = [-9.81+9.88905903, -0.11588741, -0.19282377]
-diffGyr = [      0.00258600, -0.00454077, -0.00711658]
 Yacc[:,0] = Yacc[:,0]-diffAcc[0]
 Yacc[:,1] = Yacc[:,1]-diffAcc[1]
 Yacc[:,2] = Yacc[:,2]-diffAcc[2]
+diffGyr = [      0.00258600, -0.00454077, -0.00711658]
 Ygyr[:,0] = Ygyr[:,0]-diffGyr[0]
 Ygyr[:,1] = Ygyr[:,1]-diffGyr[1]
 Ygyr[:,2] = Ygyr[:,2]-diffGyr[2]
 
 print()
 print("THE ACCELERATION VALUES ARE REDUCED BY " + str(diffAcc)+
-      " AND ANGULAR VELOCITY BY "+ #str(diffGyr) +
+      " AND ANGULAR VELOCITY BY "+ str(diffGyr) +
       " TO "+
       "CALIBRATE THEM LANDING ON 0 MOVEMENT AFTER 120 ENTRIES FROM DATA SET")
 print("VUFO/Erprobung/Fahrsicherheitstraining/Ausweichen Touran")
 print("THIS SHOULD BE DONE PROPERLY INSTEAD IN A PRODUCTIVE VERSION!")
 print()
+
+tmp = numpy.copy(Yacc)
+#vorher: android x (Yacc[:,0] = nach unten beschleunigen)
+DOWN = 0
+YAW = 0
+#Yacc[:,DOWN] = tmp[:,0] #danach: Yacc[:,0] = beschleunigung nach unten
+#vorher: android z (Yacc[:,2] = nach hinten beschleunigen)
+FORWARD = 1
+#Yacc[:,FORWARD] = -tmp[:,2] #danach: Yacc[:,1] = beschleunigung nach vorn
+#vorher: android y (Yacc[:,1] = nach links beschleunigen)
+LEFT = 2
+#Yacc[:,LEFT] = tmp[:,1] #danach: Yacc[:,2] = beschleunigung nach links
+#Yacc[:,LEFT] = np.zeros(Yacc[:,LEFT].shape)
 
 """Plots zu den gewählten Daten und dem Zeitstempelproblem"""
 if __name__ == "__main__":
@@ -230,7 +244,7 @@ if __name__ == "__main__":
     
     pyplot.figure()
     pyplot.subplot(111)
-    pyplot.title("Angle (Integrated Angular Velocity)")
+    pyplot.title("Angle from Gyroscope (Integrated Angular Velocity)")
     intgyr = numpy.zeros(Ygyr.shape)
     intgyr[:,0] = integrate.cumtrapz(Ygyr[:,0], x=Xgyr[:,0], initial=0.0) * 180.0 / pi
     intgyr[:,1] = integrate.cumtrapz(Ygyr[:,1], x=Xgyr[:,0], initial=0.0) * 180.0 / pi
@@ -238,6 +252,10 @@ if __name__ == "__main__":
     pyplot.plot(Xgyr, intgyr[:,0], label="$yaw$")
     pyplot.plot(Xgyr, intgyr[:,1], label="$pitch$")
     pyplot.plot(Xgyr, intgyr[:,2], label="$roll$")
+    pyplot.plot(Xgps[:-1], 
+                [atan2(g[i+1,0]-g[i,0], g[i+1,1]-g[i,1]) * 180.0 / pi
+                     for i in range(len(Xgps)-1)],
+                 "--", label="$direction$ from gps")
     pyplot.xlabel("$t$ in $s$")
     pyplot.ylabel("$\psi$ in $°$")
     pyplot.legend()

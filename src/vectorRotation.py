@@ -19,6 +19,25 @@ def rotate(a, newXAxis):
     b = np.dot(np.array([normX, normY]).T, a)
     return(b)
 
+def rotatedAcceleration(t, a, vx_0, vy_0, forward):
+    """
+    t is the time stamp corresponding to a.
+    
+    columns of object space acceleration a: [DOWN, FORWARD, LEFT]
+    
+    returns rotated accerleration data (shape [len(t), 2])
+    """
+    #from Integration import velocity_verlet_integration
+    #x, y, vx, vy = velocity_verlet_integration(t, a, 0., 0., vx_0, vy_0, forward)[0:4]
+    from Integration import my_integration
+    v = my_integration(t, a, 0., 0., vx_0, vy_0, forward)[4]
+    a_r = np.zeros((len(t), 2)) #rotated starting velocity
+    a_r[0,:] = rotate(a[0,1:], forward)
+    for i in range(1,len(t)):
+        #a_r[i,:] = rotate(a[i,1:], np.array([vx[i]+vx[i-1],vy[i]+vy[i-1]]))
+        a_r[i,:] = rotate(a[i,1:], v[i,:])
+    return a_r
+
 if __name__ == "__main__":
     aAngle = 2
     rAngle = 4
@@ -26,7 +45,7 @@ if __name__ == "__main__":
     r=np.array([2*cos(rAngle), 2*sin(rAngle)])
     
     
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)
     plt.subplots_adjust(bottom=0.2)
     axvec = fig.add_axes([0.18,0.08,0.70,0.03])
@@ -40,7 +59,7 @@ if __name__ == "__main__":
     vectorplot(a, "r-", label="vector")
     vectorplot(r, "g--", label="new basis")
     vectorplot((r / sqrt(np.dot(r.T, r)) / 2), "b--", label="new basis normalized")
-    vectorplot(([(r / sqrt(np.dot(r.T, r)) / 2)[1], -(r / sqrt(np.dot(r.T, r)) / 2)[0]]), "b--",
+    vectorplot(([-(r / sqrt(np.dot(r.T, r)) / 2)[1], (r / sqrt(np.dot(r.T, r)) / 2)[0]]), "b--",
                label="new basis normalized")
     vectorplot(rotate(a, r), "r--", label="rotated vector")
     m = max(max(abs(a)),max(abs(r))) + 1
@@ -57,7 +76,7 @@ if __name__ == "__main__":
         vectorplot(a, "r-", label="vector")
         vectorplot(r, "g-", label="new basis")
         vectorplot((r / sqrt(np.dot(r.T, r)) / 2), "b--", label="new basis normalized")
-        vectorplot(([(r / sqrt(np.dot(r.T, r)) / 2)[1], -(r / sqrt(np.dot(r.T, r)) / 2)[0]]), "b--",
+        vectorplot(([-(r / sqrt(np.dot(r.T, r)) / 2)[1], (r / sqrt(np.dot(r.T, r)) / 2)[0]]), "b--",
                    label="new basis normalized")
         vectorplot(rotate(a, r), "r--", label="rotated vector")
         ax.set_xlim(-m, m)
