@@ -215,11 +215,11 @@ def rotatedIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1
 #     for i in range(len(t)):
 #         v0[i,:] = rotate(v0[i,:], forward[i,:])
 # =============================================================================
-    xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=0.)+v0[:,0], t, initial=x0)
-    yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=0.)+v0[:,1], t, initial=y0)
+    xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=0.)+v0[:,0], t, initial=0.)+x0
+    yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=0.)+v0[:,1], t, initial=0.)+y0
 # =============================================================================
-#     xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=vx_0), t, initial=x0)
-#     yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=vy_0), t, initial=y0)
+#     xri = integrate.cumtrapz(integrate.cumtrapz(a[:,0], t, initial=vx_0), t, initial=0.)+x0
+#     yri = integrate.cumtrapz(integrate.cumtrapz(a[:,1], t, initial=vy_0), t, initial=0.)+y0
 # =============================================================================
     if return_velocity:
         return xri, yri, vx, vy
@@ -238,8 +238,8 @@ def rotatedIntegration(t, a, x0=0., y0=0., vx_0=0., vy_0=0., forward=np.array([1
 #         #a = rotate(yCircle[i,1:], v[i,:])
 #         xri[i] = rotated_a[0]
 #         yri[i] = rotated_a[1]
-#     xri = integrate.cumtrapz(integrate.cumtrapz(xri, t, initial=0.)+v0[:,0], t, initial=x0)
-#     yri = integrate.cumtrapz(integrate.cumtrapz(yri, t, initial=0.)+v0[:,1], t, initial=y0)
+#     xri = integrate.cumtrapz(integrate.cumtrapz(xri, t, initial=0.)+v0[:,0], t, initial=0.)+x0
+#     yri = integrate.cumtrapz(integrate.cumtrapz(yri, t, initial=0.)+v0[:,1], t, initial=0.)+y0
 #     if return_velocity:
 #         return xri, yri, vx, vy
 #     else:
@@ -303,8 +303,8 @@ def plotIntegration(Yacc, fig=None, ax=None):
             print("calculated initial forward vector: "+str(forward))
             print("(vector normalization is done during rotation)")
             break
-    lonFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,FORWARD], x=Xacc, initial=v0[0]), x=Xacc, initial=0)
-    latFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,LEFT], x=Xacc, initial=v0[1]), x=Xacc, initial=0)
+    lonFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,FORWARD], x=Xacc, initial=0.)+v0[0], x=Xacc, initial=0)
+    latFromAcc = integrate.cumtrapz(integrate.cumtrapz(Yacc[:,LEFT], x=Xacc, initial=0.)+v0[1], x=Xacc, initial=0)
     """----ab hier weiter nach x/y lat/lon vertauschungen suchen-----"""
     ax.plot(Xacc, lonFromAcc, latFromAcc, 'r-', label=u'$\int\int a_{original}$d$t$ assuming world coordinates (likely wrong)')
     lonFromAcc, latFromAcc = verlet_integration(Xacc, Yacc, position0[0], position0[1], v0[0], v0[1], forward)[0:2]
@@ -362,6 +362,7 @@ if __name__ == "__main__":
     xri, yri = rotatedIntegration(xCircle, yCircle, 0., 0., 1., 0.)
     line4, = plt.plot(xri, yri, ".-", label='position with simple double integration of rotated a')
     test, = plt.plot(vx, vy, label='velocity')
+    groundtruth, = plt.plot(np.cos(xCircle)/(2*pi), np.sin(xCircle)/(2*pi), label="ground truth")
     axis1 = plt.axes([0.28, 0.01, 0.58, 0.03], facecolor='lightgoldenrodyellow')
     axis2 = plt.axes([0.28, 0.05, 0.58, 0.03], facecolor='green', label='resolution')
     slider1 = Slider(axis1, 'centripetal force', valmin=-1.0, valmax=1.0, valinit=centripetal, valfmt='%0.3f')

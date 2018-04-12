@@ -235,7 +235,7 @@ if __name__ == "__main__":
     intgyr[:,0] = integrate.cumtrapz(Ygyr[:,0], x=Xgyr[:,0], initial=0.0) * 180.0 / pi
     intgyr[:,1] = integrate.cumtrapz(Ygyr[:,1], x=Xgyr[:,0], initial=0.0) * 180.0 / pi
     intgyr[:,2] = integrate.cumtrapz(Ygyr[:,2], x=Xgyr[:,0], initial=0.0) * 180.0 / pi
-    pyplot.plot(Xgyr, intgyr[:,0], label="$direction$")
+    pyplot.plot(Xgyr, intgyr[:,0], label="$yaw$")
     pyplot.plot(Xgyr, intgyr[:,1], label="$pitch$")
     pyplot.plot(Xgyr, intgyr[:,2], label="$roll$")
     pyplot.xlabel("$t$ in $s$")
