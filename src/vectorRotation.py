@@ -23,7 +23,7 @@ def rotatedAcceleration(t, a, vx_0, vy_0, forward):
     """
     t is the time stamp corresponding to a.
     
-    columns of object space acceleration a: [DOWN, FORWARD, LEFT]
+    columns of object space acceleration a: [UP, FORWARD, LEFT]
     
     returns rotated accerleration data (shape [len(t), 2])
     """
